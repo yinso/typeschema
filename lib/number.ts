@@ -27,16 +27,27 @@ export class NumberSchema extends S.CompoundSchema {
   }
 }
 
-export class MultipleOfConstraint extends S.TypeConstraint<number> {
+export class MultipleOfConstraint implements S.IJsonSchema {
   readonly multipleOf: number;
   constructor(multipleOf: number) {
-    super()
     this.multipleOf = multipleOf;
   }
 
-  satisfy(value : number) : boolean {
-    return (value % this.multipleOf) === 0;
+  isa(value : any) : boolean {
+    return S.TypeMap['number'].isa(value) && (value % this.multipleOf) === 0;
   }
+
+  validate(value : any, path : string, errors : S.ValidationError[]) {
+    if (!this.isa(value)) {
+      errors.push({
+        path: path,
+        value: value,
+        schema: this,
+        message: `Not a multiple of ${this.multipleOf}`
+      })
+    }
+  }
+
   errorMessage(value : any) : string {
     return `Not a multiple of ${value}`;
   }
@@ -52,17 +63,27 @@ export class MultipleOfConstraint extends S.TypeConstraint<number> {
   }
 }
 
-export class MinimumConstraint extends S.TypeConstraint<number> {
+export class MinimumConstraint implements S.IJsonSchema {
   readonly minimum : number;
   readonly exclusive : boolean;
   constructor(minimum : number, exclusive : boolean) {
-    super()
     this.minimum = minimum;
     this.exclusive = exclusive;
   }
 
-  satisfy(num : number) : boolean {
-    return this.exclusive ? num > this.minimum : num >= this.minimum;
+  isa(value : any) : boolean {
+    return S.TypeMap['number'].isa(value) && this.exclusive ? value > this.minimum : value >= this.minimum;
+  }
+
+  validate(value : any, path : string, errors : S.ValidationError[]) {
+    if (!this.isa(value)) {
+      errors.push({
+        path: path,
+        value: value,
+        schema: this,
+        message: this.errorMessage(value)
+      })
+    }
   }
 
   errorMessage(value : any) : string {
@@ -81,21 +102,31 @@ export class MinimumConstraint extends S.TypeConstraint<number> {
   }
 }
 
-export class MaximumConstraint extends S.TypeConstraint<number> {
+export class MaximumConstraint implements S.IJsonSchema {
   readonly maximum : number;
   readonly exclusive : boolean;
   constructor(maximum : number, exclusive : boolean) {
-    super()
     this.maximum = maximum;
     this.exclusive = exclusive;
   }
 
-  satisfy(num : number) : boolean {
-    return this.exclusive ? num < this.maximum : num <= this.maximum;
+  isa(value : any) : boolean {
+    return S.TypeMap['number'].isa(value) && this.exclusive ? value < this.maximum : value <= this.maximum;
   }
 
   errorMessage(value : any) : string {
     return `Greater than ${this.exclusive ? 'or equal to' : ''} ${this.maximum}`
+  }
+
+  validate(value : any, path : string, errors : S.ValidationError[]) {
+    if (!this.isa(value)) {
+      errors.push({
+        path: path,
+        value: value,
+        schema: this,
+        message: this.errorMessage(value)
+      })
+    }
   }
 
   fromJSON(data : any) : any {

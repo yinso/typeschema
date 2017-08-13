@@ -190,30 +190,6 @@ export class EnumConstraint<T> implements IJsonSchema {
   }
 }
 
-export abstract class TypeConstraint<T> implements IJsonSchema {
-  isa(value : any) : boolean {
-    return this.satisfy(<T>value);
-  }
-  abstract satisfy(value : T) : boolean;
-  validate(value : any, path : string, errors : ValidationError[]) : void {
-    if (!this.isa(value)) {
-      errors.push({
-        path : path,
-        message: this.errorMessage(value),
-        schema: this,
-        value: value
-      });
-    }
-  }
-
-  fromJSON(data : any) : any {
-    return data;
-  }
-
-  abstract errorMessage(value : any) : string;
-  abstract toJSON() : any;
-}
-
 // this is the function that'll be recursively called...
 export function validate(s : IJsonSchema, value : any) : ValidationException {
   let err = new ValidationException();
