@@ -1,0 +1,27 @@
+{
+  "name": "typeschema",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "./node_modules/.bin/mocha --require source-map-support/register"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/bluebird": "^3.5.8",
+    "@types/mocha": "^2.2.41",
+    "@types/node": "^8.0.19",
+    "@types/reflect-metadata": "0.0.5",
+    "mocha": "^3.5.0",
+    "mocha-typescript": "^1.1.7",
+    "typescript": "^2.4.2"
+  },
+  "dependencies": {
+    "ajv": "^5.2.2",
+    "bluebird": "^3.5.0",
+    "reflect-metadata": "^0.1.10",
+    "source-map-support": "^0.4.15",
+    "vali-date": "^1.0.0"
+  }
+}
