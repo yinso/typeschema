@@ -88,6 +88,7 @@ export type JsonSchemaDefinition =
   | ObjectDefinition
   | EnumOnlyDefinition 
   | AnyOfDefinition
+  | S.IJsonSchema
   ;
 
 function isIntegerDefinition(data : JsonSchemaDefinition) : data is IntegerDefinition {
@@ -127,7 +128,9 @@ function isEnumOnlyDefinition(data : JsonSchemaDefinition) : data is EnumOnlyDef
 }
 
 export function makeSchema(data : JsonSchemaDefinition) : S.IJsonSchema {
-  if (isAnyOfDefinition(data)) {
+  if (S.isJsonSchema(data)) {
+    return data;
+  } else if (isAnyOfDefinition(data)) {
     return new AO.AnyOfSchema(data.anyOf.map(makeSchema));
   } else if (isIntegerDefinition(data)) {
     return makeIntegerSchema(<IntegerDefinition>data);
@@ -168,6 +171,7 @@ function makeNumberSchema(data : NumberDefinition) : N.NumberSchema {
   if (data.maximum) {
     options.maximum = new N.MaximumConstraint(data.maximum, data.exclusiveMaximum || false)
   }
+  if (data.$make) options.$make = data.$make;
   return new N.NumberSchema(options);
 }
 
@@ -185,6 +189,7 @@ function makeIntegerSchema(data : IntegerDefinition) : I.IntegerSchema {
   if (data.maximum) {
     options.maximum = new N.MaximumConstraint(data.maximum, data.exclusiveMaximum || false)
   }
+  if (data.$make) options.$make = data.$make;
   return new I.IntegerSchema(options);
 }
 
@@ -197,6 +202,7 @@ function makeBooleanSchema(data : BooleanDefinition) : B.BooleanSchema {
   if (data.enum) {
     options.enum = new S.EnumConstraint<boolean>(data.enum);
   }
+  if (data.$make) options.$make = data.$make;
   return new B.BooleanSchema(options);
 }
 
@@ -217,6 +223,7 @@ function makeStringSchema(data : StringDefinition) : T.StringSchema {
   if (data.format) {
     options.format = new T.Format(data.format);
   }
+  if (data.$make) options.$make = data.$make;
   return new T.StringSchema(options);
 }
 
@@ -234,6 +241,7 @@ function makeArraySchema(data : ArrayDefinition) : A.ArraySchema {
   if (data.maxItems) {
     options.maxItems = new T.MaxLength(data.maxItems);
   }
+  if (data.$make) options.$make = data.$make;
   return new A.ArraySchema(options);
 }
 
@@ -247,6 +255,9 @@ function makeObjectSchema(data : ObjectDefinition) : O.ObjectSchema {
   }
   if (data.required) {
     options.required = new O.RequiredConstraint(data.required);
+  }
+  if (data.$make) {
+    options.$make = data.$make;
   }
   return new O.ObjectSchema(options);
 }

@@ -5,9 +5,9 @@ S.TypeMap['null'] = {
   make: (v) => v
 }
 
-export class NullSchema extends S.CompoundSchema {
+export class NullSchema extends S.TypeSchema {
   constructor(constraints : S.IJsonSchema[] = []) {
-    super([<S.IJsonSchema>new S.TypeSchema('null')].concat(constraints))
+    super('null', constraints)
   }
 }
 

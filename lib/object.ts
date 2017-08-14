@@ -107,10 +107,10 @@ export type ObjectSchemaOptions = {
   enum ?: S.EnumConstraint<{[key: string]: any}>
   properties ?: PropertiesConstraint;
   required ?: RequiredConstraint;
-}
+} & S.SchemaCtorOptions;
 
 // we need a bit more ability to figure out what's going on since these things are interacting with each other..
-export class ObjectSchema extends S.CompoundSchema {
+export class ObjectSchema extends S.TypeSchema {
   private properties : PropertiesConstraint;
   private required : RequiredConstraint;
   constructor(options : ObjectSchemaOptions = {}) {
@@ -121,7 +121,7 @@ export class ObjectSchema extends S.CompoundSchema {
       constraints.push(options.required);
     if (options.properties)
       constraints.push(options.properties);
-    super([<S.IJsonSchema>new S.TypeSchema('object')].concat(constraints))
+    super('object', constraints, options.$make ? options.$make : undefined)
     if (options.required)
       this.required = options.required;
     if (options.properties)
@@ -134,7 +134,7 @@ export class ObjectSchema extends S.CompoundSchema {
       throw validateRes;
     // otherwise - it's time to get the values converted...
     let res = this.properties.fromJSON(value);
-    return res;
+    return this._maker(res);
   }
   setProperty(key : string, prop : S.IJsonSchema, required : boolean = true) {
     // this can be difficult to do!!!

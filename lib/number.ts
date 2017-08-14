@@ -12,7 +12,7 @@ export type NumberSchemOptions = {
   enum ?: S.EnumConstraint<number>;
 }
 
-export class NumberSchema extends S.CompoundSchema {
+export class NumberSchema extends S.TypeSchema {
   constructor(options : NumberSchemOptions = {}) {
     let constraints : S.IJsonSchema[] = [];
     if (options.multipleOf)
@@ -23,7 +23,7 @@ export class NumberSchema extends S.CompoundSchema {
       constraints.push(options.maximum);
     if (options.enum)
       constraints.push(options.enum);
-    super([<S.IJsonSchema>new S.TypeSchema('number')].concat(constraints));
+    super('number', constraints);
   }
 }
 

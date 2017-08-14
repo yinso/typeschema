@@ -6,7 +6,7 @@ export type ArraySchemaOptions = {
   enum ?: S.EnumConstraint<Array<any>>;
   minItems ?: T.MinLength;
   maxItems ?: T.MaxLength;
-}
+} & S.SchemaCtorOptions;
 
 export class ItemsConstraint implements S.IJsonSchema {
   readonly items : S.IJsonSchema;
@@ -49,7 +49,7 @@ export class ItemsConstraint implements S.IJsonSchema {
   }
 }
 
-export class ArraySchema extends S.CompoundSchema {
+export class ArraySchema extends S.TypeSchema {
   constructor(options : ArraySchemaOptions = {}) {
     let constraints : S.IJsonSchema[] = []
     if (options.items)
@@ -60,6 +60,6 @@ export class ArraySchema extends S.CompoundSchema {
       constraints.push(options.minItems);
     if (options.maxItems)
       constraints.push(options.maxItems);
-    super([<S.IJsonSchema>new S.TypeSchema('array')].concat(constraints))
+    super('array', constraints, options.$make ? options.$make : undefined)
   }
 }

@@ -58,11 +58,25 @@ class ObjectSchemaTest {
     class Person {
       name : string;
       ssn : SSN;
+      birthday: Date;
+      constructor(options : {name : string, ssn : SSN, birthday: Date}) {
+        this.name = options.name;
+        this.ssn = options.ssn;
+        this.birthday = options.birthday;
+      }
+      toJSON() {
+        return {
+          name: this.name,
+          ssn: this.ssn.toJSON(),
+          birthday: this.birthday.toISOString()
+        };
+      }
     }
-    T.registerFormat('ssn', (v) => /^\d\d\d-?\d\d-?\d\d\d\d$/.test(v), (v) => new SSN(v))
+    //T.registerFormat('ssn', (v) => /^\d\d\d-?\d\d-?\d\d\d\d$/.test(v), (v) => new SSN(v))
     let s_ssn = B.makeSchema({
       type: 'string',
-      format: 'ssn'
+      pattern: '^\\d\\d\\d-?\\d\\d-?\\d\\d\\d\\d$',
+      $make: (v) => new SSN(v)
     });
     let s_person = B.makeSchema({
       type: 'object',
@@ -70,16 +84,24 @@ class ObjectSchemaTest {
         name: {
           type: 'string'
         },
-        ssn: {
-          type: 'string', format: 'ssn'
+        ssn: s_ssn,
+        birthday: {
+          type: 'string', format: 'date-time'
         }
       },
-      required: ['name', 'ssn']
+      required: ['name', 'ssn', 'birthday'],
+      $make: (v) => {
+        console.info('new Person being called...', v)
+        return new Person(v)
+      }
     });
-    let john = s_person.fromJSON({
+    let johnJson = {
       name: 'John',
-      ssn: '123-45-6789'
-    })
+      ssn: '123-45-6789',
+      birthday: '1970-01-10T00:00:00.000Z'
+    };
+    let john = s_person.fromJSON(johnJson)
+    deepEqual(john.toJSON(), johnJson);
     console.info(util.inspect(john, { depth: 1000, colors: true }))
   }
 }

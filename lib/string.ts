@@ -10,9 +10,9 @@ export type StringSchemaOptions = {
   maxLength ?: MaxLength;
   pattern ?: Pattern;
   format ?: Format;
-}
+} & S.SchemaCtorOptions;
 
-export class StringSchema extends S.CompoundSchema {
+export class StringSchema extends S.TypeSchema {
   constructor(options : StringSchemaOptions = {}) {
     let constraints : S.IJsonSchema[] = [];
     if (options.minLength)
@@ -23,7 +23,7 @@ export class StringSchema extends S.CompoundSchema {
       constraints.push(options.pattern);
     if (options.format)
       constraints.push(options.format);
-    super([<S.IJsonSchema>new S.TypeSchema('string')].concat(constraints));
+    super('string', constraints, options.$make ? options.$make : (options.format ? formatMap[options.format.format].make : undefined));
   }
 }
 
@@ -118,18 +118,18 @@ export class Pattern implements S.IJsonSchema {
 
 const formatMap : {[key: string]: {
   isa: (value : any) => boolean;
-  fromJSON: (value : any) => any}
+  make: (value : any) => any}
 } = {
   'date-time': {
     isa: valiDate,
-    fromJSON: (value : any) => new Date(value)
+    make: (value : any) => new Date(value)
   }
 }
 
 export function registerFormat(format : string, isa : (value : any) => boolean, fromJSON: (value : any) => any) : void {
   formatMap[format] = {
     isa: isa,
-    fromJSON : fromJSON
+    make : fromJSON
   };
 }
 
@@ -157,7 +157,7 @@ export class Format implements S.IJsonSchema {
 
   fromJSON(data : any) : any {
     if (this.isa(data)) {
-      return formatMap[this.format].fromJSON(data);
+      return formatMap[this.format].make(data);
     } else {
       throw new S.ValidationException([{
         path: '$',

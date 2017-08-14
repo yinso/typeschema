@@ -2,7 +2,11 @@ import { ValueObject } from './value-object';
 import * as S from './schema';
 import * as N from './number';
 
-export class IntegerSchema extends S.CompoundSchema {
+export class IntegerSchema extends S.TypeSchema {
+  readonly multipleOf ?: N.MultipleOfConstraint;
+  readonly minimum ?: N.MinimumConstraint;
+  readonly maximum ?: N.MaximumConstraint;
+  readonly enum ?: S.EnumConstraint<number>;
   constructor(options : N.NumberSchemOptions = {}) {
     let constraints : S.IJsonSchema[] = [];
     if (options.multipleOf)
@@ -13,7 +17,12 @@ export class IntegerSchema extends S.CompoundSchema {
       constraints.push(options.maximum);
     if (options.enum)
       constraints.push(options.enum);
-    super([ <S.IJsonSchema>(new S.TypeSchema('integer')) ].concat(constraints));
+    let type = new S.TypeConstraint('integer');
+    super('integer', constraints)
+    if (options.enum) this.enum = options.enum;
+    if (options.maximum) this.maximum = options.maximum;
+    if (options.minimum) this.minimum = options.minimum;
+    if (options.multipleOf) this.multipleOf = options.multipleOf;
   }
 }
 
