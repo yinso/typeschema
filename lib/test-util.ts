@@ -10,7 +10,7 @@ export function hasErrors(result : S.ValidationResult) {
   assert.notEqual(result.errors.length, 0);
 }
 
-export { throws , deepEqual , doesNotThrow as noThrows } from 'assert';
+export { throws , deepEqual , doesNotThrow as noThrows , ok } from 'assert';
 
 
 export { suite, test, slow, timeout } from "mocha-typescript";

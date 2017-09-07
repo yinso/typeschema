@@ -9,5 +9,12 @@ export class NullSchema extends S.TypeSchema {
   constructor(constraints : S.IJsonSchema[] = []) {
     super('null', constraints)
   }
+
+  jsonify(value : any) : any {
+    if (value === null)
+      return value;
+    else
+      throw new Error(`Not a null`);
+  }
 }
 

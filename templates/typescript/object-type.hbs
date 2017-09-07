@@ -1,0 +1,30 @@
+export class {{typeName}} {
+  {{> object-type-properties typeExp }}
+  constructor(v : {{> (ctor-param typeExp.type) typeExp.type}}) {
+    if ({{> value-type-isa typeExp }}) {
+      throw new Error(`Not a {{typeName}}`)
+    }
+    this._v = v;
+  }
+
+  static schema = S.makeSchema({{{to-schema typeExp}}})
+
+  // this function is strictly useless if we are doing instanceof typing.
+  // instead what we are looking for is checking for constructible data...
+  static isa(v : any) : boolean {
+    return v instanceof {{typeName}};
+  }
+
+  static fromJSON( v : any) : {{typeName}} {
+    if ({{> value-type-isa typeExp }}) {
+      return new {{typeName}}(v);
+    } else {
+      throw new Error(`Not a {{typeExp.type}}`);
+    }
+  }
+
+  toJSON() : any {
+    return this._v;
+  }
+}
+

@@ -13,6 +13,7 @@ export type StringSchemaOptions = {
 } & S.SchemaCtorOptions;
 
 export class StringSchema extends S.TypeSchema {
+  format : Format;
   constructor(options : StringSchemaOptions = {}) {
     let constraints : S.IJsonSchema[] = [];
     if (options.minLength)
@@ -23,9 +24,23 @@ export class StringSchema extends S.TypeSchema {
       constraints.push(options.pattern);
     if (options.format)
       constraints.push(options.format);
-    super('string', constraints, options.$make ? options.$make : (options.format ? formatMap[options.format.format].make : undefined));
+    super('string', constraints, options.$make ? options.$make : (options.format ? formatMap[options.format.format].make : S.TypeMap.string.make));
+    if (options.format) this.format = options.format;
+  }
+
+  jsonify(value : any) {
+    if (S.TypeMap.string.isa(value))
+      return value;
+    else if (value instanceof String)
+      return value.valueOf();
+    else if (this.format && this.format.isa(value))
+      return this.format.jsonify(value)
+    else
+      throw new Error(`Invalid Schema Value Match`)
   }
 }
+
+S.registerSchema(String, new StringSchema());
 
 export class MinLength implements S.IJsonSchema {
   readonly minLength : number;
@@ -54,6 +69,9 @@ export class MinLength implements S.IJsonSchema {
     return {
       minLength: this.minLength
     }
+  }
+  jsonify(value : any) {
+    return value;
   }
 }
 
@@ -84,16 +102,26 @@ export class MaxLength implements S.IJsonSchema {
       maxLength: this.maxLength
     }
   }
+
+  jsonify(value : any) {
+    return value;
+  }
 }
 
 export class Pattern implements S.IJsonSchema {
   readonly pattern : RegExp;
-  constructor(pattern : string) {
-    this.pattern = new RegExp(pattern);
+  constructor(pattern : string | RegExp) {
+    if (pattern instanceof RegExp) {
+      this.pattern = pattern;
+    } else {
+      this.pattern = new RegExp(pattern);
+    }
   }
+
   isa(value : any) : boolean {
     return this.pattern.test(value)
   }
+
   validate(value : any, path : string, errors: S.ValidationError[]) {
     if (!this.isa(value)) {
       errors.push({
@@ -114,22 +142,33 @@ export class Pattern implements S.IJsonSchema {
       pattern: this.pattern.source
     }
   }
-}
 
-const formatMap : {[key: string]: {
-  isa: (value : any) => boolean;
-  make: (value : any) => any}
-} = {
-  'date-time': {
-    isa: valiDate,
-    make: (value : any) => new Date(value)
+  jsonify(value : any) {
+    return value;
   }
 }
 
-export function registerFormat(format : string, isa : (value : any) => boolean, fromJSON: (value : any) => any) : void {
+const formatMap : {[key: string]: {
+    isa: (value : any) => boolean;
+    make: (value : any) => any;
+    jsonify: (value : any) => any;
+  }
+} = {
+  'date-time': {
+    isa: valiDate,
+    make: (value : any) => {
+      console.info('date-time.make', value);
+      return new Date(value);
+    },
+    jsonify : (value : Date) => value.toJSON() 
+  }
+}
+
+export function registerFormat(format : string, { isa, fromJSON, jsonify }: { isa : (value : any) => boolean; fromJSON: (value : any) => any; jsonify: (value : any) => any; }) : void {
   formatMap[format] = {
     isa: isa,
-    make : fromJSON
+    make : fromJSON,
+    jsonify: jsonify
   };
 }
 
@@ -174,5 +213,16 @@ export class Format implements S.IJsonSchema {
       pattern: this.format
     }
   }
+
+  jsonify(value : any) {
+    if (this.isa(value)) {
+      return formatMap[this.format].jsonify(value);
+    } else {
+      throw new Error("Invalid format");
+    }
+  }
 }
 
+S.registerSchema(Date, new StringSchema({
+  format: new Format('date-time')
+}));

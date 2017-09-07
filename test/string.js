@@ -1,14 +1,4 @@
 "use strict";
-var __extends = (this && this.__extends) || (function () {
-    var extendStatics = Object.setPrototypeOf ||
-        ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
-        function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
-    return function (d, b) {
-        extendStatics(d, b);
-        function __() { this.constructor = d; }
-        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
-    };
-})();
 var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
     var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
     if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
@@ -21,7 +11,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 var S = require("../lib/schema");
 var T = require("../lib/string");
-var V = require("../lib/value-object");
+var D = require("../lib/decorator");
 var test_util_1 = require("../lib/test-util");
 var StringSchemaTest = (function () {
     function StringSchemaTest() {
@@ -51,15 +41,27 @@ var StringSchemaTest = (function () {
         test_util_1.deepEqual(s.fromJSON(ts), new Date(ts));
         test_util_1.throws(function () { return s.fromJSON('hello'); });
     };
+    StringSchemaTest.prototype.canUseDecorator = function () {
+        var SSN = D.makeValueObject({
+            type: 'string',
+            pattern: /^\d\d\d-?\d\d-?\d\d\d\d$/
+        });
+        test_util_1.noThrows(function () { return new SSN('123-45-6789'); });
+        test_util_1.throws(function () { return new SSN('134'); });
+        test_util_1.noThrows(function () { return SSN.fromJSON('123456789'); });
+        test_util_1.throws(function () { return SSN.fromJSON('junk'); });
+        test_util_1.deepEqual(new SSN('123-45-6789').toJSON(), '123-45-6789');
+    };
     StringSchemaTest.prototype.canAddNewFormat = function () {
-        var SSN = (function (_super) {
-            __extends(SSN, _super);
-            function SSN() {
-                return _super !== null && _super.apply(this, arguments) || this;
-            }
-            return SSN;
-        }(V.ValueObject));
-        T.registerFormat('ssn', function (v) { return /^\d\d\d-?\d\d-?\d\d\d\d$/.test(v); }, function (v) { return new SSN(v); });
+        var SSN = D.makeValueObject({
+            type: 'string',
+            pattern: /^\d\d\d-?\d\d-?\d\d\d\d$/
+        });
+        T.registerFormat('ssn', {
+            isa: function (v) { return SSN.getSchema().isa(v); },
+            fromJSON: function (v) { return SSN.fromJSON(v); },
+            jsonify: function (v) { return v.toJSON(); }
+        });
         var s = new T.StringSchema({ format: new T.Format('ssn') });
         var ssn = '123456789';
         test_util_1.deepEqual(s.fromJSON(ssn), new SSN(ssn));
@@ -83,6 +85,12 @@ var StringSchemaTest = (function () {
         __metadata("design:paramtypes", []),
         __metadata("design:returntype", void 0)
     ], StringSchemaTest.prototype, "canDeserializeDate", null);
+    __decorate([
+        test_util_1.test,
+        __metadata("design:type", Function),
+        __metadata("design:paramtypes", []),
+        __metadata("design:returntype", void 0)
+    ], StringSchemaTest.prototype, "canUseDecorator", null);
     __decorate([
         test_util_1.test,
         __metadata("design:type", Function),

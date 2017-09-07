@@ -2,6 +2,7 @@ import * as S from '../lib/schema';
 import * as T from '../lib/string';
 import * as B from '../lib/builder';
 import * as V from '../lib/value-object';
+import * as D from '../lib/decorator';
 import { suite , test , hasErrors, noErrors , throws , deepEqual , noThrows } from '../lib/test-util';
 
 @suite
@@ -38,11 +39,29 @@ class StringSchemaTest {
   }
 
   @test
-  canAddNewFormat() {
-    class SSN extends V.ValueObject<string> {
+  canUseDecorator() {
+    let SSN = D.makeValueObject<string>({
+      type: 'string',
+      pattern: /^\d\d\d-?\d\d-?\d\d\d\d$/
+    });
+    noThrows(() => new SSN('123-45-6789'));
+    throws(() => new SSN('134'));
+    noThrows(() => SSN.fromJSON('123456789'));
+    throws(() => SSN.fromJSON('junk'));
+    deepEqual(new SSN('123-45-6789').toJSON(), '123-45-6789')
+  }
 
-    }
-    T.registerFormat('ssn', (v) => /^\d\d\d-?\d\d-?\d\d\d\d$/.test(v), (v) => new SSN(v));
+  @test
+  canAddNewFormat() {
+    let SSN = D.makeValueObject<string>({
+      type: 'string',
+      pattern: /^\d\d\d-?\d\d-?\d\d\d\d$/
+    });
+    T.registerFormat('ssn', {
+      isa: (v) => SSN.getSchema().isa(v), // can't directly use SSN.isa, which tests for whether the value belongs to the class.
+      fromJSON: (v) => SSN.fromJSON(v),
+      jsonify: (v) => v.toJSON()
+    });
     let s = new T.StringSchema({format: new T.Format('ssn')})
     let ssn = '123456789'
     deepEqual(s.fromJSON(ssn), new SSN(ssn))

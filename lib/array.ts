@@ -47,9 +47,13 @@ export class ItemsConstraint implements S.IJsonSchema {
       items: this.items.toJSON()
     }
   }
+  jsonify(value : any) : any {
+    return value;
+  }
 }
 
 export class ArraySchema extends S.TypeSchema {
+  items : S.IJsonSchema;
   constructor(options : ArraySchemaOptions = {}) {
     let constraints : S.IJsonSchema[] = []
     if (options.items)
@@ -61,5 +65,14 @@ export class ArraySchema extends S.TypeSchema {
     if (options.maxItems)
       constraints.push(options.maxItems);
     super('array', constraints, options.$make ? options.$make : undefined)
+    if (options.items) this.items = options.items;
+  }
+
+  jsonify(value : any) : any {
+    if (S.TypeMap.array.isa(value) || value instanceof Array) {
+      return value.map((item : any) => this.items.jsonify(item));
+    } else {
+      throw new Error("Not an array");
+    }
   }
 }

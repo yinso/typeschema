@@ -10,7 +10,7 @@ export type NumberSchemOptions = {
   minimum ?: MinimumConstraint;
   maximum ?: MaximumConstraint;
   enum ?: S.EnumConstraint<number>;
-}
+} & S.SchemaCtorOptions;
 
 export class NumberSchema extends S.TypeSchema {
   constructor(options : NumberSchemOptions = {}) {
@@ -25,7 +25,19 @@ export class NumberSchema extends S.TypeSchema {
       constraints.push(options.enum);
     super('number', constraints);
   }
+
+  jsonify(value : any) {
+    if (S.TypeMap.number.isa(value)) {
+      return value;
+    } else if (value instanceof Number) {
+      return value.valueOf();
+    } else {
+      throw new Error(`Not a number`);
+    }
+  }
 }
+
+S.registerSchema(Number, new NumberSchema());
 
 export class MultipleOfConstraint implements S.IJsonSchema {
   readonly multipleOf: number;
@@ -60,6 +72,10 @@ export class MultipleOfConstraint implements S.IJsonSchema {
     return {
       multipleOf: this.multipleOf
     }
+  }
+
+  jsonify(value : any) {
+    return value;
   }
 }
 
@@ -100,6 +116,10 @@ export class MinimumConstraint implements S.IJsonSchema {
       exclusiveMinimum: this.exclusive
     };
   }
+
+  jsonify(value : any) {
+    return value;
+  }
 }
 
 export class MaximumConstraint implements S.IJsonSchema {
@@ -138,5 +158,9 @@ export class MaximumConstraint implements S.IJsonSchema {
       maximum: this.maximum,
       exclusiveMaximum: this.exclusive
     };
+  }
+
+  jsonify(value : any) {
+    return value;
   }
 }

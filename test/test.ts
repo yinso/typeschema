@@ -49,8 +49,8 @@ class DeserializeTest {
   @test
   canDeserializeNumber() {
     // is this what I'm looking for?
-    let num : number = D.fromJSON<number>(Number, 1);
-    let str : string = D.fromJSON<string>(String, 'test')
-    let date : Date = D.fromJSON<Date>(Date, '2013-01-01T00:00:00Z') 
+    let num : number = S.fromJSON<number>(Number, 1);
+    let str : string = S.fromJSON<string>(String, 'test')
+    let date : Date = S.fromJSON<Date>(Date, '2013-01-01T00:00:00Z') 
   }
 }

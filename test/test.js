@@ -11,7 +11,6 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 var S = require("../lib/schema");
 var B = require("../lib/builder");
-var D = require("../lib/decorator");
 var I = require("../lib/integer");
 var A = require("../lib/array");
 var test_util_1 = require("../lib/test-util");
@@ -77,9 +76,9 @@ var DeserializeTest = (function () {
     }
     DeserializeTest.prototype.canDeserializeNumber = function () {
         // is this what I'm looking for?
-        var num = D.fromJSON(Number, 1);
-        var str = D.fromJSON(String, 'test');
-        var date = D.fromJSON(Date, '2013-01-01T00:00:00Z');
+        var num = S.fromJSON(Number, 1);
+        var str = S.fromJSON(String, 'test');
+        var date = S.fromJSON(Date, '2013-01-01T00:00:00Z');
     };
     __decorate([
         test_util_1.test,

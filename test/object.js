@@ -21,6 +21,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 var S = require("../lib/schema");
 var B = require("../lib/builder");
+var D = require("../lib/decorator");
 var I = require("../lib/integer");
 var T = require("../lib/string");
 var A = require("../lib/array");
@@ -123,6 +124,59 @@ var ObjectSchemaTest = (function () {
         test_util_1.deepEqual(john.toJSON(), johnJson);
         console.info(util.inspect(john, { depth: 1000, colors: true }));
     };
+    ObjectSchemaTest.prototype.canUseDecorator = function () {
+        var Foo = (function () {
+            function Foo(options) {
+                // these are already typed...
+                // if we are going to create this function, the way to do it is to check against the class's maker...
+                // i.e. the $class.isa(value) ==> ought to return the right values...
+                // what happens when it's an | type??? in that case hopefully it will be the right types...
+                // currently isa() checks for basic strutural values, but doesn't check against the ctor.
+                // 
+                // Class
+                //   _$schema
+                //     isa(value : any) => boolean - for JSON check (i.e. structural).
+                //     validate(value : any) => result - structural check.
+                //   fromJSON(value : any) => instance - utilizes _$schema
+                //   isa(value : any) => should this utilize schema?
+                //   the idea is that once it gets in here - we will need to be sure to check against the value's types, which 
+                //   are the $class value!
+                //   i.e this is because the target type & the end type isn't necessary the same!!!
+                //   in order to do this - we'll need to have the type map.
+                //   TypeMap.integer.isa()
+                //   TypeMap.SSN.isa() => v instanceof SSN ==> this *must* exist.
+                //   
+                // 
+                this.foo = options.foo;
+                this.bar = options.bar || new Date();
+            }
+            __decorate([
+                D.Property({
+                    type: 'string'
+                }),
+                __metadata("design:type", String)
+            ], Foo.prototype, "foo", void 0);
+            __decorate([
+                D.Property({
+                    type: 'string',
+                    format: 'date-time',
+                    $optional: true
+                }),
+                __metadata("design:type", Date)
+            ], Foo.prototype, "bar", void 0);
+            return Foo;
+        }());
+        var foo = new Foo({ foo: 'test', bar: new Date() });
+        console.log('****** canUseDecorator', foo.toJSON());
+        var bar = Foo.fromJSON({ foo: 'hello', bar: '2017-01-01T00:00:01Z' });
+        console.log('********** from JSON', util.inspect(bar, { colors: true, depth: 1000 }));
+        var bar2 = Foo.fromJSON({ foo: 'hello' });
+        console.log('********** from JSON', util.inspect(bar2, { colors: true, depth: 1000 }));
+        test_util_1.throws(function () {
+            var bar = Foo.fromJSON({});
+            console.info('!!!!!!!!! should not see this!!!', bar);
+        });
+    };
     __decorate([
         test_util_1.test,
         __metadata("design:type", Function),
@@ -141,6 +195,12 @@ var ObjectSchemaTest = (function () {
         __metadata("design:paramtypes", []),
         __metadata("design:returntype", void 0)
     ], ObjectSchemaTest.prototype, "canDeserialize", null);
+    __decorate([
+        test_util_1.test,
+        __metadata("design:type", Function),
+        __metadata("design:paramtypes", []),
+        __metadata("design:returntype", void 0)
+    ], ObjectSchemaTest.prototype, "canUseDecorator", null);
     ObjectSchemaTest = __decorate([
         test_util_1.suite
     ], ObjectSchemaTest);

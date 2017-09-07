@@ -24,6 +24,16 @@ export class IntegerSchema extends S.TypeSchema {
     if (options.minimum) this.minimum = options.minimum;
     if (options.multipleOf) this.multipleOf = options.multipleOf;
   }
+
+  jsonify(value : any) : any {
+    if (S.TypeMap.integer.isa(value)) {
+      return value;
+    } else if (value instanceof Integer) {
+      return value.valueOf();
+    } else {
+      throw new Error("Not an integer");
+    }
+  }
 }
 
 let s = new IntegerSchema();
@@ -36,3 +46,5 @@ export class Integer extends ValueObject<number> {
     }
   }
 }
+
+S.registerSchema(Integer, s);

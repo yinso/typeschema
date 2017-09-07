@@ -49,7 +49,7 @@ export type StringConstraints = {
   enum ?: string[];
   minLength ?: number;
   maxLength ?: number;
-  pattern ?: string;
+  pattern ?: string | RegExp;
   format ?: string;
 }
 
@@ -70,8 +70,8 @@ export type ArrayDefinition = {
 
 export type ObjectConstraints = {
   enum ?: {[key: string]: any}[];
-  properties : {[key: string]: JsonSchemaDefinition},
-  required: string[]
+  properties ?: {[key: string]: JsonSchemaDefinition},
+  required ?: string[]
 }
 
 export type ObjectDefinition = {
@@ -90,6 +90,17 @@ export type JsonSchemaDefinition =
   | AnyOfDefinition
   | S.IJsonSchema
   ;
+
+  export type ValueSchemaDefinition =
+  NumberDefinition
+  | IntegerDefinition
+  | NullDefinition
+  | BooleanDefinition
+  | StringDefinition
+  | EnumOnlyDefinition 
+  ;
+
+
 
 function isIntegerDefinition(data : JsonSchemaDefinition) : data is IntegerDefinition {
   return data.hasOwnProperty('type') && (<{[key: string]: any}>data)['type'] === 'integer';
@@ -125,6 +136,24 @@ function isAnyOfDefinition(data : JsonSchemaDefinition) : data is AnyOfDefinitio
 
 function isEnumOnlyDefinition(data : JsonSchemaDefinition) : data is EnumOnlyDefinition {
   return data.hasOwnProperty('enum') && !data.hasOwnProperty('type');
+}
+
+export function makeValueSchema(data : ValueSchemaDefinition) {
+  if (isIntegerDefinition(data)) {
+    return makeIntegerSchema(<IntegerDefinition>data);
+  } else if (isNullDefinition(data)) {
+    return makeNullSchema(<NullDefinition>data);
+  } else if (isNumberDefinition(data)) {
+    return makeNumberSchema(<NumberDefinition>data);
+  } else if (isBooleanDefinition(data)) {
+    return makeBooleanSchema(<BooleanDefinition>data);
+  } else if (isStringDefinition(data)) {
+    return makeStringSchema(<StringDefinition>data);
+  } else if (isEnumOnlyDefinition(data)) {
+    return makeEnumSchema(data);
+  } else {
+    throw new Error(`Invaild Json Schema`)
+  }
 }
 
 export function makeSchema(data : JsonSchemaDefinition) : S.IJsonSchema {

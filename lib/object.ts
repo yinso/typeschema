@@ -2,7 +2,7 @@ import * as S from './schema';
 
 export class RequiredConstraint implements S.IJsonSchema {
   readonly required: string[];
-  constructor(required: string[]) {
+  constructor(required: string[] = []) {
     this.required = required;
   }
 
@@ -20,11 +20,12 @@ export class RequiredConstraint implements S.IJsonSchema {
   }
 
   validate(value : any, path : string, errors : S.ValidationError[]) {
+    console.info('RequiredConstraint.validate', value, this);
     for (var i = 0; i < this.required.length; ++i) {
       if (!value.hasOwnProperty(this.required[i])) {
         errors.push({
           path: `${path}.${this.required[i]}`,
-          message: this.errorMessage(value[i]),
+          message: this.errorMessage(this.required[i]),
           value: value,
           schema: this
         })
@@ -45,11 +46,15 @@ export class RequiredConstraint implements S.IJsonSchema {
       required: this.required
     }
   }
+
+  jsonify(value : any) : any {
+    return value;
+  }
 }
 
 export class PropertiesConstraint implements S.IJsonSchema {
   readonly properties: {[key: string]: S.IJsonSchema};
-  constructor(properties: {[key: string]: S.IJsonSchema}) {
+  constructor(properties: {[key: string]: S.IJsonSchema} = {}) {
     this.properties = properties;
   }
   isa(value : any) : boolean {
@@ -101,6 +106,17 @@ export class PropertiesConstraint implements S.IJsonSchema {
     }
     return { properties: result };
   }
+
+  jsonify(value : any) : any {
+    console.info('****** Object.properties.jsonify', value);
+    let res : {[key: string]: any} = {};
+    for (var key in this.properties) {
+      if (this.properties.hasOwnProperty(key) && value.hasOwnProperty(key)) {
+        res[key] = this.properties[key].jsonify(value[key]);
+      }
+    }
+    return res;
+  }
 }
 
 export type ObjectSchemaOptions = {
@@ -117,25 +133,27 @@ export class ObjectSchema extends S.TypeSchema {
     let constraints : S.IJsonSchema[] = [];
     if (options.enum)
       constraints.push(options.enum);
-    if (options.required)
-      constraints.push(options.required);
-    if (options.properties)
-      constraints.push(options.properties);
+    if (!options.required)
+      options.required = new RequiredConstraint();
+    constraints.push(options.required);
+    if (!options.properties)
+      options.properties = new PropertiesConstraint();
+    constraints.push(options.properties);
     super('object', constraints, options.$make ? options.$make : undefined)
-    if (options.required)
-      this.required = options.required;
-    if (options.properties)
-      this.properties = options.properties;
+    this.required = options.required;
+    this.properties = options.properties;
   }
 
   fromJSON(value : any) : any {
     let validateRes = S.validate(this, value);
+    console.log('Object.fromJSON', validateRes);
     if (validateRes.errors.length > 0)
       throw validateRes;
     // otherwise - it's time to get the values converted...
     let res = this.properties.fromJSON(value);
     return this._maker(res);
   }
+
   setProperty(key : string, prop : S.IJsonSchema, required : boolean = true) {
     // this can be difficult to do!!!
     // perhaps this is where the design falls down? hmm...
@@ -143,6 +161,11 @@ export class ObjectSchema extends S.TypeSchema {
     if (required) {
       this.required.setRequired(key);
     }
+  }
+
+  jsonify(value : any) : any {
+    console.info('***** Object.jsonify', value);
+    return this.properties.jsonify(value);
   }
 }
 

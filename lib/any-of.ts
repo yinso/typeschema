@@ -42,4 +42,13 @@ export class AnyOfSchema implements S.IJsonSchema {
       anyOf: this.schemas.map((s) => s.toJSON())
     }
   }
+
+  jsonify(value : any) : any {
+    for (var i = 0; i < this.schemas.length; ++i) {
+      if (this.schemas[i].isa(value)) {
+        return this.schemas[i].jsonify(value);
+      }
+    }
+    return value;
+  }
 }
