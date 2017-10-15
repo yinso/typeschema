@@ -82,6 +82,11 @@ export class RefType implements TypeExp {
   constructor(ref : string) {
     this.ref = ref;
   }
+
+  isPlainType() : boolean {
+    return false;
+  }
+
   toSchema() {
     return {
       $ref: this.ref
@@ -97,7 +102,11 @@ export class StringType implements TypeExp {
   type = 'string';
   readonly constraints: Constraint[];
   constructor(constraints: Constraint[] = []) {
-    this.constraints = constraints.concat().sort((a, b) => a.name.localeCompare(b.name));
+    this.constraints = constraints.concat().sort((a, b) => a.name.localeCompare(b.name)) || [];
+  }
+
+  isPlainType() : boolean {
+    return this.constraints.length === 0;
   }
 
   equals(v : any) : boolean {
@@ -147,6 +156,10 @@ export class ObjectType implements TypeExp {
   keyvals : ObjectTypeKeyVal[];
   constructor(keyvals: ObjectTypeKeyVal[] = []) {
     this.keyvals = keyvals;
+  }
+
+  isPlainType() : boolean {
+    return false;
   }
 
   equals(v : any) {

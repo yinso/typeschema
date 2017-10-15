@@ -16,6 +16,95 @@ function globAsync(pattern : string) : Promise<string[]> {
   })
 }
 
+class StringTypePrinter {
+  name : string;
+  exp : T.StringType;
+  constructor(decl : T.TypeDeclaration) {
+    this.name = decl.typeName;
+    this.exp = <T.StringType>decl.typeExp;
+  }
+
+  render() {
+    return this.renderDeclaration();
+  }
+
+  renderIsBaseJson(param : string) {
+    return `typeof(${param}) === '${this.exp.type}'`;
+  }
+
+
+  renderCallIsBaseJson(param : string) {
+    if (this.exp.isPlainType()) {
+      return this.renderIsBaseJson(param);
+    } else {
+      return `${this.name}.isJSON(${param})`
+    }
+  }
+
+  renderValidateJson(param : string, pathParam : string, errParam : string) {
+    return `
+    if (!${this.renderIsBaseJson(param)}) {
+      ${errParam}.push({
+        error: 'Not a ${this.exp.type}',
+        value: ${param},
+        path : ${pathParam}
+      });
+    }`;
+  }
+
+  renderCallValidateJson(param : string, pathParam : string, errParam : string) {
+    if (this.exp.isPlainType()) {
+      return this.renderValidateJson(param, pathParam, errParam);
+    } else {
+      return `
+      ${this.name}.validateJSON(${param}, ${pathParam}, ${errParam});
+      `;
+    }
+  }
+
+  renderDeclaration() {
+    let name = this.name;
+    let type = this.exp;
+    return `
+    export class ${name} {
+      private readonly _v : ${type.type};
+      constructor(v : ${type.type}) {
+        this._v = v;
+      }
+
+      static fromJSON(v : any) : ${name} {
+        let res = ${name}.validateJSON(v);
+        if (res.hasErrors()) {
+          throw res;
+        }
+        return new ${name}(v);
+      }
+
+      static isJSON(v: any) : boolean {
+        return ${this.renderIsBaseJson('v')};
+      }
+
+      static validateJSON(v : any, path : string = '$', err = new ValidationResult()) : ValidationResult {
+        ${this.renderValidateJson('v', 'path', 'err')}
+        return err;
+      }
+
+      valueOf() : ${type.type} {
+        return this._v;
+      }
+
+      toString() {
+        return this._v;
+      }
+
+      toJSON() : any {
+        return this._v;
+      }
+    }
+    `;
+  }
+}
+
 class ValueTypePrinter {
   decl : T.TypeDeclaration;
 
@@ -43,15 +132,14 @@ class ValueTypePrinter {
         return new ${name}(v);
       }
 
-      static validate(v : any, path : string = '$') : ValidationResult {
-        let res = new ValidationResult();
+      static validate(v : any, path : string = '$', err = new ValidationResult()) : ValidationResult {
         if (!typeof(v) === '${type.type}') {
-          res.push({
+          err.push({
             error: 'Not a ${type.type}',
             path : path
           });
         }
-        return res;
+        return err;
       }
 
       valueOf() : ${type.type} {
@@ -151,21 +239,111 @@ class ObjectPropertyDeclarationPrinter {
 
 }
 
+class ObjectValidationJSONPrinter {
+  keyval : T.ObjectTypeKeyVal;
+  constructor(keyval : T.ObjectTypeKeyVal) {
+    this.keyval = keyval;
+  }
+
+  render() : string {
+    let keyval = this.keyval;
+    // let's see if 
+    return `
+    readonly ${keyval.key} ${this.renderOptionality(keyval)} ${this.renderTypeDefinition(keyval.val)};
+    `
+  }
+
+  renderOptionality(keyval : T.ObjectTypeKeyVal) : string {
+    return keyval.required ? ':' : '?:';
+  }
+
+  renderTypeDefinition(type : T.TypeExp) : string {
+    let printer = new TypeScriptPrinter();
+    return printer.renderTypeDefinition(type);
+  }
+}
+
+class ObjectIsJsonPrinter {
+  keyval : T.ObjectTypeKeyVal;
+  constructor(keyval : T.ObjectTypeKeyVal) {
+    this.keyval = keyval;
+  }
+
+  render() : string {
+    let keyval = this.keyval;
+    // let's see if 
+    return `
+    readonly ${keyval.key} ${this.renderOptionality(keyval)} ${this.renderTypeDefinition(keyval.val)};
+    `
+  }
+
+  renderOptionality(keyval : T.ObjectTypeKeyVal) : string {
+    return keyval.required ? ':' : '?:'; 
+  }
+
+  renderTypeDefinition(type : T.TypeExp) : string {
+    let printer = new TypeScriptPrinter();
+    return printer.renderTypeDefinition(type);
+  }
+}
+
+
 class ObjectTypePrinter {
   decl : T.TypeDeclaration;
+  name : string;
+  type : T.ObjectType;
 
   constructor(decl : T.TypeDeclaration) {
     this.decl = decl;
+    this.name = decl.typeName;
+    this.type = <T.ObjectType>decl.typeExp;
   }
 
   render() {
     return this.renderDeclaration(this.decl.typeName, <T.ObjectType>this.decl.typeExp);
   }
 
+  renderIsBaseJson(param : string) : string {
+    return `typeof(${param}) === 'object'`;
+  }
+
+  renderIsJsonKeyVals(param : string) : string {
+    return this.type.keyvals.map((kv) => {
+      let printer = new StringTypePrinter(new T.TypeDeclaration(kv.key, kv.val));
+      return `
+      if (${kv.required ? '' : `${param}.${kv.key} && `}!${printer.renderCallIsBaseJson(param + '.' + kv.key)}) { // ${param + '.' + kv.key} is ${kv.required ? 'required' : 'optional'}
+        return false;
+      }
+      `;
+    }).join('\n');
+  }
+
+  renderValidateBaseJson(param: string, pathParam : string, errorParam : string) {
+    return `
+    if (!(${param} instanceof Object)) {
+      ${errorParam}.push({
+        error: 'Not an Object',
+        value: ${param},
+        path: ${pathParam === '' ? "''" : pathParam}
+      });
+    }
+    `;
+  }
+
+  renderValidateJsonKeyVals(param : string, pathParam : string, errorParam : string) : string {
+    return this.type.keyvals.map((kv) => {
+      let printer = new StringTypePrinter(new T.TypeDeclaration(kv.key, kv.val));
+      return `
+      ${kv.required ? '' : `${param}.${kv.key} && `}${printer.renderCallValidateJson(param + '.'  + kv.key, pathParam === '' ? "''" : pathParam + " + '." + kv.key + "'", errorParam)} // ${param + '.' + kv.key} is ${kv.required ? 'required' : 'optional'}
+      `;
+    }).join('\n');
+  }
+
   renderDeclaration(name : string, type : T.ObjectType) {
     return `
     export class ${name} {
       ${this.renderPropertyDeclarations(type.keyvals)}
+      // constructors expect the values are already of the proper-type.
       constructor( v: ${this.renderConstructorOptions(type)}) {
         if (!(v instanceof Object)) {
           throw new Error("InvalidParameter: must be object");
@@ -173,20 +351,30 @@ class ObjectTypePrinter {
         ${this.renderConstructorAssignment(type)}
       }
 
-      // validate is meant to validate the **JSON*** values of the structure...
-      static validateJSON(v : any) : ValidationResult {
-        let res = new ValidationResult();
-        if (!(v instanceof Object)) {
-          // add the basic structure information... v must be an object.
-        }
-        return res;
+      static isJSON(v: any) : boolean {
+        if (!${this.renderIsBaseJson('v')})
+          return false;
+        // add the test for each of the keyvals!!!
+        ${this.renderIsJsonKeyVals('v')}
+        return true;
       }
 
+      // validate is meant to validate the **JSON*** values of the structure...
+      static validateJSON(v : any, path = '$', err = new ValidationResult()) : ValidationResult {
+        ${this.renderValidateBaseJson('v', 'path', 'err')}
+        // add the validation for each of the keyvals!!!
+        ${this.renderValidateJsonKeyVals('v', 'path', 'err')}
+        return err;
+      }
+
+      // converts the JSON value into the appropriate class.
       static fromJSON(v : any) : ${name} {
-        if (!(v instanceof Object)) {
-          throw new Error('Not an object');
-        }
-        throw new Error('Not yet implemented');
+        let err = new ValidationResult();
+        ${this.renderValidateBaseJson('v', '', 'err')}
+        if (err.hasErrors())
+          throw err;
+        let json = {};
+        return new ${name}(json);
       }
 
       toJSON() : any {
