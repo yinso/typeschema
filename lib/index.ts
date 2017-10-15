@@ -1,23 +1,3 @@
-import * as S from '../lib/schema';
-import * as B from '../lib/builder';
-import * as D from '../lib/decorator';
-import * as I from '../lib/integer';
-import * as N from '../lib/number';
-import * as U from '../lib/null';
-import * as T from '../lib/string';
-import * as A from '../lib/array';
-import * as O from '../lib/object';
-import * as AO from '../lib/any-of';
 import * as V from '../lib/value-object';
 
-export * from '../lib/schema';
-export * from '../lib/builder';
-export * from '../lib/decorator';
-export * from '../lib/integer';
-export * from '../lib/number';
-export * from '../lib/null';
-export * from '../lib/string';
-export * from '../lib/array';
-export * from '../lib/object';
-export * from '../lib/any-of';
 export * from '../lib/value-object';

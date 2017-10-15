@@ -13,7 +13,7 @@ var T = require("../lib/ast");
 var G = require("../lib/grammar");
 var P = require("../lib/typescript");
 var test_util_1 = require("../lib/test-util");
-var TypeScriptTest = (function () {
+var TypeScriptTest = /** @class */ (function () {
     function TypeScriptTest() {
     }
     TypeScriptTest.prototype.canLoadTemplates = function () {

@@ -1,5 +1,4 @@
 import * as T from './ast';
-import * as handlebars from 'handlebars';
 import * as Promise from 'bluebird';
 import * as fs from 'fs-extra-promise';
 import * as glob from 'glob';
@@ -17,29 +16,18 @@ function globAsync(pattern : string) : Promise<string[]> {
   })
 }
 
-export class TypeScriptPrinter {
-  constructor() {
+class ValueTypePrinter {
+  decl : T.TypeDeclaration;
 
+  constructor(decl : T.TypeDeclaration) {
+    this.decl = decl;
   }
 
-  loadTemplates() {
-    return Promise.resolve();
+  render() {
+    return this.renderDeclaration(this.decl.typeName, this.decl.typeExp);
   }
 
-  render(map : T.TypeMap) : string {
-    let decls = map.getDeclarations();
-    return decls.map((decl) => this.renderDeclaration(decl)).join(`\n`);
-  }
-
-  renderDeclaration(decl : T.TypeDeclaration) : string {
-    if (decl.typeExp instanceof T.StringType) {
-      return this._renderDeclareValueType(decl.typeName, decl.typeExp);
-    } else {
-      return this._renderDeclareObjectType(decl.typeName, decl.typeExp as T.ObjectType);
-    }
-  }
-
-  _renderDeclareValueType(name : string, type : T.TypeExp) : string {
+  renderDeclaration(name : string, type : T.TypeExp) {
     return `
     export class ${name} {
       private readonly _v : ${type.type};
@@ -80,24 +68,123 @@ export class TypeScriptPrinter {
     }
     `;
   }
+}
 
-  _renderDeclareObjectType(name : string, type: T.ObjectType) : string {
+class ObjectConstructorOptionsPrinter {
+  keyvals : T.ObjectTypeKeyVal[];
+  constructor(keyvals : T.ObjectTypeKeyVal[]) {
+    this.keyvals = keyvals;
+  }
+
+  render() : string {
+    return `{${this._renderObjectTypeConstructorKeyVals(this.keyvals)}}`;
+  }
+
+  _renderObjectTypeConstructorKeyVals(keyvals: T.ObjectTypeKeyVal[]) : string {
+    return keyvals.map((keyval) => this._renderObjectTypeConstructorKeyVal(keyval)).join(', ');
+  }
+
+  _renderObjectTypeConstructorKeyVal(keyval : T.ObjectTypeKeyVal) : string {
+    return `${keyval.key} ${this.renderOptionality(keyval)} ${this.renderTypeDefinition(keyval.val)}`;
+  }
+
+  renderOptionality(keyval : T.ObjectTypeKeyVal) : string {
+    return keyval.required ? ':' : '?:'; 
+  }
+
+  renderTypeDefinition(type : T.TypeExp) : string {
+    let printer = new TypeScriptPrinter();
+    return printer.renderTypeDefinition(type);
+  }
+}
+
+class ObjectConstructorAssignmentPrinter {
+  keyvals : T.ObjectTypeKeyVal[];
+  constructor(keyvals : T.ObjectTypeKeyVal[]) {
+    this.keyvals = keyvals;
+  }
+
+  render() : string {
+    return this.keyvals.map((kv) => this.renderPropertyAssignment(kv)).join(`\n`);
+  }
+
+  renderPropertyAssignment(kv : T.ObjectTypeKeyVal) : string {
+    if (kv.required) {
+      return `
+      if (!v.${kv.key}) {
+        throw new Error("RequiredField: ${kv.key}");
+      } else {
+        this.${kv.key} = v.${kv.key};
+      }
+      `;
+    } else {
+      return `
+      if (v.${kv.key}) {
+        this.${kv.key} = v.${kv.key};
+      }
+      `;
+    }
+  }
+}
+
+class ObjectPropertyDeclarationPrinter {
+  keyval : T.ObjectTypeKeyVal;
+  constructor(keyval : T.ObjectTypeKeyVal) {
+    this.keyval = keyval;
+  }
+
+  render() : string {
+    let keyval = this.keyval;
+    return `
+    readonly ${keyval.key} ${this.renderOptionality(keyval)} ${this.renderTypeDefinition(keyval.val)};
+    `
+  }
+
+  renderOptionality(keyval : T.ObjectTypeKeyVal) : string {
+    return keyval.required ? ':' : '?:'; 
+  }
+
+  renderTypeDefinition(type : T.TypeExp) : string {
+    let printer = new TypeScriptPrinter();
+    return printer.renderTypeDefinition(type);
+  }
+
+}
+
+class ObjectTypePrinter {
+  decl : T.TypeDeclaration;
+
+  constructor(decl : T.TypeDeclaration) {
+    this.decl = decl;
+  }
+
+  render() {
+    return this.renderDeclaration(this.decl.typeName, <T.ObjectType>this.decl.typeExp);
+  }
+
+  renderDeclaration(name : string, type : T.ObjectType) {
     return `
     export class ${name} {
-      ${this._renderObjectTypePropertyDeclarations(type.keyvals)}
-      constructor( v: ${this._renderObjectTypeConstructorOptions(type)}) {
-        ${this._renderObjectTypeConstructorAssignment(type)};
+      ${this.renderPropertyDeclarations(type.keyvals)}
+      constructor( v: ${this.renderConstructorOptions(type)}) {
+        if (!(v instanceof Object)) {
+          throw new Error("InvalidParameter: must be object");
+        }
+        ${this.renderConstructorAssignment(type)}
       }
 
       // validate is meant to validate the **JSON*** values of the structure...
       static validateJSON(v : any) : ValidationResult {
         let res = new ValidationResult();
-        retun res;
+        if (!(v instanceof Object)) {
+          // add the basic structure information... v must be an object.
+        }
+        return res;
       }
 
       static fromJSON(v : any) : ${name} {
         if (!(v instanceof Object)) {
-          throw new ERror('Not an object');
+          throw new Error('Not an object');
         }
         throw new Error('Not yet implemented');
       }
@@ -108,132 +195,67 @@ export class TypeScriptPrinter {
     }`;
   }
 
-  _renderObjectTypeConstructorOptions(type : T.ObjectType) : string {
-    return `{${this._renderObjectTypeConstructorKeyVals(type.keyvals)}}`;
-  }
-
-  _renderObjectTypeConstructorKeyVals(keyvals: T.ObjectTypeKeyVal[]) : string {
-    return keyvals.map((keyval) => this._renderObjectTypeConstructorKeyVal(keyval)).join(', ');
-  }
-
-  _renderObjectTypeConstructorKeyVal(keyval : T.ObjectTypeKeyVal) : string {
-    return `${keyval.key} ${this._renderKeyValOptionality(keyval)} ${this._renderTypeDefinition(keyval.val)}`;
-  }
-
-  _renderObjectTypeConstructorAssignment(type : T.ObjectType) : string {
-    return type.keyvals.map((kv) => this._renderObjectTypeConstructorPropertyAssignment(kv)).join(`\n`);
-  }
-
-  _renderObjectTypeConstructorPropertyAssignment(kv : T.ObjectTypeKeyVal) : string {
-    return `
-    this.${kv.key} = v.${kv.key};`;
-  }
-
-  _renderObjectTypePropertyDeclarations(keyvals : T.ObjectTypeKeyVal[]) : string {
+  renderPropertyDeclarations(keyvals : T.ObjectTypeKeyVal[]) {
     return keyvals.map((keyval) => {
-      return this._renderObjectTypePropertyDeclaration(keyval);
+      let printer = new ObjectPropertyDeclarationPrinter(keyval);
+      return printer.render();
     }).join('');
   }
 
-  _renderTypeDefinition(type : T.TypeExp) : string {
+  renderConstructorOptions(type : T.ObjectType) {
+    let printer = new ObjectConstructorOptionsPrinter(type.keyvals);
+    return printer.render();
+  }
+
+  renderConstructorAssignment(type : T.ObjectType) {
+    let printer = new ObjectConstructorAssignmentPrinter(type.keyvals);
+    return printer.render();
+  }
+}
+
+export class TypeScriptPrinter {
+  constructor() {
+
+  }
+
+  loadTemplates() {
+    return Promise.resolve();
+  }
+
+  render(map : T.TypeMap) : string {
+    let decls = map.getDeclarations();
+    return decls.map((decl) => this.renderDeclaration(decl)).join(`\n`);
+  }
+
+  renderDeclaration(decl : T.TypeDeclaration) : string {
+    if (decl.typeExp instanceof T.StringType) {
+      let printer = new ValueTypePrinter(decl);
+      return printer.render();
+    } else {
+      let printer = new ObjectTypePrinter(decl);
+      return printer.render();
+    }
+  }
+
+  renderTypeDefinition(type : T.TypeExp) : string {
     if (type instanceof T.StringType) {
       return `string`;
     } else if (type instanceof T.ObjectType) {
-      return this._renderObjectTypeDefinition(type as T.ObjectType);
+      return this.renderObjectTypeDefinition(type as T.ObjectType);
     } else if (type instanceof T.RefType) {
-      return this._renderRefType(type as T.RefType);
+      return this.renderRefType(type as T.RefType);
     } else {
       throw new Error(`Unknown type!: ${JSON.stringify(type.toSchema(), null, 2)}`);
     }
   }
 
-  _renderRefType(type : T.RefType) : string {
+  renderRefType(type : T.RefType) : string {
     return type.ref;
   }
 
-  _renderObjectTypeDefinition(type : T.ObjectType) : string {
-    return `{
-      ${this._renderObjectTypePropertyDeclarations(type.keyvals)}
-    }`;
+  renderObjectTypeDefinition(type : T.ObjectType) : string {
+    let printer = new ObjectConstructorOptionsPrinter(type.keyvals);
+    return printer.render();
   }
 
-  _renderKeyValOptionality(keyval : T.ObjectTypeKeyVal) : string {
-    return keyval.required ? '?:' : ':'; 
-  }
-
-  _renderObjectTypePropertyDeclaration(keyval : T.ObjectTypeKeyVal) : string {
-    return `
-    readonly ${keyval.key} ${this._renderKeyValOptionality(keyval)} ${this._renderTypeDefinition(keyval.val)};
-    `
-  }
 }
-
-class TypeScriptPrinter2 {
-  _handlebars : typeof handlebars;
-  constructor() {
-    // let's 
-    this._handlebars = handlebars.create();
-    this._handlebars.registerHelper('declare-partial', this.typeDeclarePartial);
-    this._handlebars.registerHelper('to-schema', this.typeToSchema);
-    this._handlebars.registerHelper('constraint-isa', this.constraintIsa);
-    this._handlebars.registerHelper('ctor-param', this._constructorParameters);
-  }
-
-  typeDeclarePartial(typeExp : T.TypeExp) : string {
-    if (typeExp instanceof T.StringType) {
-      return 'value-type';
-    } else {
-      return 'object-type';
-    }
-  }
-
-  constraintIsa(constraint : T.Constraint) : string {
-    console.info('***** Constraint.isa', constraint);
-    if (constraint instanceof T.Pattern) {
-      return 'value-type-pattern';
-    } else if (constraint instanceof T.MinLength) {
-      return 'value-type-minLength';
-    } else if (constraint instanceof T.MaxLength) {
-      return 'value-type-maxLength';
-    } else {
-      throw new Error(`Unknown constraint type: ${constraint}`)
-    }
-  }
-
-  _constructorParameters(typeExp : T.TypeExp) : string {
-    if (typeExp instanceof T.StringType) {
-      return 'ctor-param-string';
-    } else {
-      return 'ctor-param-object';
-    }
-  }
-
-  typeToSchema(typeExp: T.TypeExp) : string {
-    return JSON.stringify(typeExp.toSchema(), null, 2);
-  }
-
-
-  loadTemplates() {
-    return globAsync(path.join(__dirname, '..', 'templates', 'typescript', '**/*.hbs'))
-      .then((paths) => {
-        return Promise.map(paths, (filePath) => {
-          return fs.readFileAsync(filePath, 'utf8')
-            .then((data) => {
-              let partialName = path.basename(filePath, path.extname(filePath));
-              let template = this._handlebars.compile(data);
-              this._handlebars.registerPartial(partialName, template);
-            })
-        })
-      })
-  }
-
-  render(decl : T.TypeDeclaration) {
-    let template = this._handlebars.partials['type-declaration'];
-    if (typeof(template) == 'function') {
-      return template(decl);
-    } else {
-      throw new Error(`Unknown Template: type-declaration: ${template}`);
-    }
-  }
-
-} 
