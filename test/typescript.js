@@ -12,6 +12,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 var T = require("../lib/ast");
 var G = require("../lib/grammar");
 var P = require("../lib/typescript");
+var fs = require("fs-extra-promise");
+var path = require("path");
 var test_util_1 = require("../lib/test-util");
 var TypeScriptTest = /** @class */ (function () {
     function TypeScriptTest() {
@@ -24,7 +26,10 @@ var TypeScriptTest = /** @class */ (function () {
             return printer.renderDeclaration(new T.TypeDeclaration('SSN', new T.StringType([new T.Pattern(/^\d\d\d-?\d\d-?\d\d\d\d$/), new T.MinLength(5)])));
         })
             .then(function (res) {
-            console.info(res);
+            return fs.writeFileAsync(path.join(__dirname, '..', '_test_source', 'ssn.ts'), res, 'utf8')
+                .then(function () {
+                console.info(res);
+            });
         });
     };
     TypeScriptTest.prototype.canParseTypeDefinition = function () {
@@ -51,7 +56,10 @@ var TypeScriptTest = /** @class */ (function () {
             return printer.render(res);
         })
             .then(function (res) {
-            console.info(res);
+            return fs.writeFileAsync(path.join(__dirname, '..', '_test_source', 'person.ts'), res, 'utf8')
+                .then(function () {
+                console.info(res);
+            });
         });
     };
     __decorate([

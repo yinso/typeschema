@@ -17,10 +17,10 @@ function globAsync(pattern : string) : Promise<string[]> {
 }
 
 class StringTypePrinter {
-  name : string;
+  typeName : string;
   exp : T.StringType;
   constructor(decl : T.TypeDeclaration) {
-    this.name = decl.typeName;
+    this.typeName = decl.typeName;
     this.exp = <T.StringType>decl.typeExp;
   }
 
@@ -29,7 +29,7 @@ class StringTypePrinter {
   }
 
   renderIsBaseJson(param : string) {
-    return `typeof(${param}) === '${this.exp.type}'`;
+    return `(typeof(${param}) === '${this.exp.type}')`;
   }
 
 
@@ -37,7 +37,7 @@ class StringTypePrinter {
     if (this.exp.isPlainType()) {
       return this.renderIsBaseJson(param);
     } else {
-      return `${this.name}.isJSON(${param})`
+      return `${this.typeName}.isJSON(${param})`
     }
   }
 
@@ -57,15 +57,16 @@ class StringTypePrinter {
       return this.renderValidateJson(param, pathParam, errParam);
     } else {
       return `
-      ${this.name}.validateJSON(${param}, ${pathParam}, ${errParam});
+      ${this.typeName}.validateJSON(${param}, ${pathParam}, ${errParam});
       `;
     }
   }
 
   renderDeclaration() {
-    let name = this.name;
+    let name = this.typeName;
     let type = this.exp;
     return `
+    import { ValidationResult } from '../lib/schema';
     export class ${name} {
       private readonly _v : ${type.type};
       constructor(v : ${type.type}) {
@@ -116,8 +117,13 @@ class ValueTypePrinter {
     return this.renderDeclaration(this.decl.typeName, this.decl.typeExp);
   }
 
+  renderIsBaseJson(param : string) {
+    return `(typeof(v) === '${this.decl.typeExp.type}')`;
+  }
+
   renderDeclaration(name : string, type : T.TypeExp) {
     return `
+    import { ValidationResult } from '../lib/schema';
     export class ${name} {
       private readonly _v : ${type.type};
       constructor(v : ${type.type}) {
@@ -125,7 +131,7 @@ class ValueTypePrinter {
       }
 
       static fromJSON(v : any) : ${name} {
-        let res = validate(v);
+        let res = ${name}.validate(v);
         if (res.hasErrors()) {
           throw res;
         }
@@ -133,13 +139,19 @@ class ValueTypePrinter {
       }
 
       static validate(v : any, path : string = '$', err = new ValidationResult()) : ValidationResult {
-        if (!typeof(v) === '${type.type}') {
+        if (!${this.renderIsBaseJson('v')}) {
           err.push({
             error: 'Not a ${type.type}',
-            path : path
+            path : path,
+            value: v
           });
         }
         return err;
+      }
+
+      static isJSON(v : any) {
+        let res = ${name}.validate(v);
+        return !res.hasErrors();
       }
 
       valueOf() : ${type.type} {
@@ -304,7 +316,7 @@ class ObjectTypePrinter {
   }
 
   renderIsBaseJson(param : string) : string {
-    return `typeof(${param}) === 'object'`;
+    return `(typeof(${param}) === 'object')`;
   }
 
   renderIsJsonKeyVals(param : string) : string {
@@ -341,11 +353,12 @@ class ObjectTypePrinter {
 
   renderDeclaration(name : string, type : T.ObjectType) {
     return `
+    import { ValidationResult } from '../lib/schema';
     export class ${name} {
       ${this.renderPropertyDeclarations(type.keyvals)}
       // constructors expect the values are already of the proper-type.
       constructor( v: ${this.renderConstructorOptions(type)}) {
-        if (!(v instanceof Object)) {
+        if (!${this.renderIsBaseJson('v')}) {
           throw new Error("InvalidParameter: must be object");
         }
         ${this.renderConstructorAssignment(type)}

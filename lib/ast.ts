@@ -71,9 +71,17 @@ export class MaxLength implements Constraint {
 }
 
 export interface TypeExp {
-  readonly type : string; 
+  readonly type : string;
   toSchema() : any;
   equals(v : any) : boolean;
+  /**
+   * indicates whether this is a "plain type" that won't be wrapped by other types.
+   * 
+   * For example, if a string type doesn't have any constraints, it will compile into a
+   * plain string type. However, if it has other constraints, a custom Value Object class
+   * will be created for the type.
+   */
+  isPlainType() : boolean;
 }
 
 export class RefType implements TypeExp {

@@ -14,13 +14,17 @@ export class ValidationResult {
   raise () {
     throw new ValidationException(this.errors);
   }
+  push(err : ValidationError) {
+    this.errors.push(err);
+  }
 }
 
 export interface ValidationError {
-  message : string;
+  error: string;
   path : string;
-  schema : IJsonSchema;
   value : any;
+  schema ?: IJsonSchema;
+  message ?: string;
 }
 
 export class ValidationException extends Error {

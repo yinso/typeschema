@@ -1,6 +1,8 @@
 import * as T from '../lib/ast';
 import * as G from '../lib/grammar';
 import * as P from '../lib/typescript';
+import * as fs from 'fs-extra-promise';
+import * as path from 'path';
 import { suite , test , hasErrors, noErrors , ok, throws , deepEqual , noThrows } from '../lib/test-util';
 
 @suite
@@ -15,7 +17,10 @@ class TypeScriptTest {
         return printer.renderDeclaration(new T.TypeDeclaration('SSN', new T.StringType([new T.Pattern(/^\d\d\d-?\d\d-?\d\d\d\d$/), new T.MinLength(5)])))
       })
       .then((res) => {
-        console.info(res);
+        return fs.writeFileAsync(path.join(__dirname, '..', '_test_source', 'ssn.ts'), res, 'utf8')
+          .then(() => {
+            console.info(res);
+          })
       })
   }
 
@@ -60,7 +65,10 @@ class TypeScriptTest {
         return printer.render(res)
       })
       .then((res) => {
-        console.info(res);
+        return fs.writeFileAsync(path.join(__dirname, '..', '_test_source', 'person.ts'), res, 'utf8')
+          .then(() => {
+            console.info(res);
+          })
       })
   }
 }
