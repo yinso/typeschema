@@ -30,6 +30,7 @@
     "glob": "^7.1.2",
     "reflect-metadata": "^0.1.10",
     "source-map-support": "^0.4.15",
+    "typescript-parser": "^2.2.2",
     "vali-date": "^1.0.0"
   }
 }

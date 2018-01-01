@@ -1,6 +1,5 @@
 
     import { ValidationResult } from '../lib/schema';
-    import { SSN } from './ssn';
     export class Person {
       
     readonly firstName : string;
