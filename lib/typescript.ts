@@ -175,17 +175,9 @@ export class ScalarTypeTransformer {
     }
 }
 
-export class StringTypeTransformer {
-    private _inner : ast.StringTypeExp;
-
-    constructor(inner : ast.StringTypeExp) {
-        this._inner = inner;
-    }
-
-    transform() : ast.ClassDecl {
-        let transformer = new ScalarTypeTransformer(this._inner.name, ast.identifier('_v'), ast.scalarTypeExp('string'))
-        return transformer.transform();
-    }
+export function transformStringType(type : ast.StringTypeExp) {
+    let transformer = new ScalarTypeTransformer(type.name, ast.identifier('_v'), ast.scalarTypeExp('string'))
+    return transformer.transform();
 }
 
 export class Printer {

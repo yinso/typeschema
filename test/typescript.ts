@@ -17,7 +17,6 @@ class PrinterTest {
                 ast.funcallExp(ast.memberExp(ast.identifier('console'), ast.identifier('log')), [ ast.identifier('a') ])
             ]),
         )));
-        let transformer = new ts.StringTypeTransformer(ast.stringTypeExp(ast.identifier('SSN')));
-        console.info(printer.print(transformer.transform()));
+        console.info(printer.print(ts.transformStringType(ast.stringTypeExp(ast.identifier('SSN')))));
     }
 }
