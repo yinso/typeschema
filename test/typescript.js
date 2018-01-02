@@ -22,7 +22,23 @@ var PrinterTest = /** @class */ (function () {
         ]), ast.blockExp([
             ast.funcallExp(ast.memberExp(ast.identifier('console'), ast.identifier('log')), [ast.identifier('a')])
         ]))));
-        console.info(printer.print(ts.transformStringType(ast.stringTypeExp(ast.identifier('SSN')))));
+        console.info(printer.print(ts.transformStringType(ast.stringTypeExp(ast.identifier('SSN'), {
+            pattern: ast.patternConstraint('^\\d-\\d-\\d-?\\d-\\d-?\\d-\\d-\\d-\\d$'),
+            minLength: ast.minLengthConstraint(9, true),
+            maxLength: ast.maxLengthConstraint(11, true)
+        }))));
+    };
+    PrinterTest.prototype.canPrintPatternTest = function () {
+        var printer = new ts.Printer();
+        console.info(printer.print(ast.ifExp(ast.unaryExp('!', ast.funcallExp(ast.memberExp(ast.regexExp('^\\d\\d\\d-?\\d\\d-?\\d\\d\\d\\d$'), ast.identifier('test')), [
+            ast.identifier('v')
+        ])), ast.funcallExp(ast.memberExp(ast.identifier('err'), ast.identifier('push')), [
+            ast.objectExp([
+                ast.objectExpKV(ast.identifier('error'), ast.stringExp('PatternMismatch')),
+                ast.objectExpKV(ast.identifier('path'), ast.identifier('path')),
+                ast.objectExpKV(ast.identifier('value'), ast.identifier('v'))
+            ])
+        ]))));
     };
     __decorate([
         test_util_1.test,
@@ -30,6 +46,12 @@ var PrinterTest = /** @class */ (function () {
         __metadata("design:paramtypes", []),
         __metadata("design:returntype", void 0)
     ], PrinterTest.prototype, "canPrint", null);
+    __decorate([
+        test_util_1.test,
+        __metadata("design:type", Function),
+        __metadata("design:paramtypes", []),
+        __metadata("design:returntype", void 0)
+    ], PrinterTest.prototype, "canPrintPatternTest", null);
     PrinterTest = __decorate([
         test_util_1.suite
     ], PrinterTest);

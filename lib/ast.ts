@@ -1,4 +1,4 @@
-import { isRegExp, isNull, isNumber , isBoolean } from "util";
+import { isRegExp, isNull, isNumber , isBoolean, isString } from "util";
 
 export interface Node {
     type: string;
@@ -91,7 +91,7 @@ export interface RegexExp extends Node {
     readonly flags : string;
 }
 
-export function regexExp(pattern: string, flags: string) : RegexExp {
+export function regexExp(pattern: string, flags : string = '') : RegexExp {
     return { type: 'RegexExp', pattern: pattern, flags: flags };
 }
 
@@ -183,15 +183,15 @@ export function isUnaryExp(arg : any) : arg is UnaryExp {
 
 export interface ReturnExp extends Node {
     readonly type: 'ReturnExp';
-    readonly exp: IExpression;
+    readonly exp ?: IExpression;
 }
 
-export function returnExp(exp : IExpression) : ReturnExp {
+export function returnExp(exp ?: IExpression) : ReturnExp {
     return { type: 'ReturnExp', exp: exp };
 }
 
 export function isReturnExp(arg : any) : arg is ReturnExp {
-    return !!arg && arg.type === 'ReturnExp' && isExpression(arg.exp);
+    return !!arg && arg.type === 'ReturnExp' && (arg.exp ? isExpression(arg.exp) : true);
 }
 
 export type BinaryOperators = '+' | '-' | '*' | '/' | '%' | '==' | '!=' | '>' | '>=' | '<' | '<=' | '.'; // member exp is here...
@@ -588,25 +588,21 @@ export function isBuiltinType(arg : any) : arg is BuiltinType {
 export interface StringTypeExp extends Node {
     type: 'StringTypeExp';
     name: Identifier;
-    pattern ?: RegExp;
-    minLength ?: number;
-    minInclusive ?: boolean;
-    maxLength ?: number;
-    maxInclusive ?: boolean;
+    pattern ?: PatternConstraint;
+    minLength ?: MinLengthConstraint;
+    maxLength ?: MaxLengthConstraint;
 }
 
-export function stringTypeExp(name: Identifier, args : { pattern ?: RegExp, minLength ?: number, minInclusive ?: boolean, maxLength ?: number, maxInclusive ?: boolean} = {}) : StringTypeExp {
+export function stringTypeExp(name: Identifier, args : { pattern ?: PatternConstraint, minLength ?: MinLengthConstraint, maxLength ?: MaxLengthConstraint } = {}) : StringTypeExp {
     return { type: 'StringTypeExp', name: name, ...args };
 }
 
 export function isStringTypeExp(arg : any) : arg is StringTypeExp {
     return !!arg && arg.type === 'StringTypeExp'
         && isIdentifier(arg.name)
-        && (arg.pattern ? isRegExp(arg.pattern) : true)
-        && (arg.minLength ? isNumber(arg.minLength) : true)
-        && (arg.minInclusive ? isBoolean(arg.minInclusive) : true)
-        && (arg.maxLength ? isNumber(arg.maxLength) : true)
-        && (arg.maxInclusive ? isBoolean(arg.maxInclusive) : true);
+        && (arg.pattern ? isPatternConstraint(arg.pattern) : true)
+        && (arg.minLength ? isMinLengthConstraint(arg.minInclusive) : true)
+        && (arg.maxLength ? isMaxLengthConstraint(arg.maxLength) : true);
 }
 
 export interface ScalarTypeExp extends Node {
@@ -702,4 +698,57 @@ export function refTypeExp(name: Identifier) : RefTypeExp {
 
 export function isRefTypeExp(arg : any) : arg is RefTypeExp {
     return !!arg && arg.type === 'RefTypeExp' && isIdentifier(arg.name);
+}
+
+export interface PatternConstraint extends Node {
+    type: 'PatternConstraint';
+    pattern: string;
+    flags: string;
+}
+
+export function patternConstraint(pattern: string, flags : string = '') : PatternConstraint {
+    return { type: 'PatternConstraint', pattern: pattern, flags: flags };
+}
+
+export function isPatternConstraint(arg : any) : arg is PatternConstraint {
+    return !!arg && arg.type === 'PatternConstraint' && isString(arg.pattern) && isString(arg.flags);
+}
+
+export interface MinLengthConstraint extends Node {
+    type: 'MinLengthConstraint';
+    minLength: number;
+    inclusive: boolean;
+}
+
+export function minLengthConstraint(minLength: number, inclusive: boolean = false) : MinLengthConstraint {
+    return { type: 'MinLengthConstraint', minLength: minLength, inclusive: inclusive };
+}
+
+export function isMinLengthConstraint(arg : any) : arg is MinLengthConstraint {
+    return !!arg && arg.type === 'MinLengthConstraint' && isNumber(arg.minLength) && isBoolean(arg.inclusive);
+}
+
+export interface MaxLengthConstraint extends Node {
+    type: 'MaxLengthConstraint';
+    maxLength: number;
+    inclusive: boolean;
+}
+
+export function maxLengthConstraint(maxLength: number, inclusive: boolean = false) : MaxLengthConstraint {
+    return { type: 'MaxLengthConstraint', maxLength: maxLength, inclusive: inclusive };
+}
+
+export function isMaxLengthConstraint(arg : any) : arg is MinLengthConstraint {
+    return !!arg && arg.type === 'MaxLengthConstraint' && isNumber(arg.maxLength) && isBoolean(arg.inclusive);
+}
+
+export type Constraint =
+    PatternConstraint
+    | MinLengthConstraint
+    | MaxLengthConstraint;
+
+export function isConstraint(arg : any) : arg is Constraint {
+    return isPatternConstraint(arg)
+        || isMinLengthConstraint(arg)
+        || isMaxLengthConstraint(arg);
 }

@@ -2,19 +2,130 @@ import * as ast from './ast';
 import { Doc , layout , nest , text, empty, concat, flexWS, line } from './pretty-printer';
 import { validate } from './schema';
 
+// we also need something called constraint transformer.
+// the idea is that we are passing in a bunch of constraint values, and then each of the constraint will then be 
+// transformed specifically...
+
+interface ConstraintTransformer {
+    validateTest() : ast.IfExp;
+}
+
+class MinLengthConstraintTransformer implements ConstraintTransformer {
+    constraint : ast.MinLengthConstraint;
+    errorName : string;
+    paramName : ast.Identifier;
+    operator : '<=' | '<';
+
+    constructor(constraint: ast.MinLengthConstraint, paramName : ast.Identifier) {
+        this.constraint = constraint;
+        this.errorName = 'LessThanMinLength';
+        this.paramName = paramName;
+        this.operator = constraint.inclusive ? '<=' : '<';
+    }
+
+
+    isaTest() {
+        return ast.binaryExp(this.operator, ast.memberExp(this.paramName, ast.identifier('length')), ast.integerExp(this.constraint.minLength));
+    }
+
+    validateTest() {
+        return ast.ifExp(
+            ast.unaryExp('!', this.isaTest()),
+            ast.funcallExp(
+                ast.memberExp(ast.identifier('err'), ast.identifier('push')),
+                [
+                    ast.objectExp([
+                        ast.objectExpKV(ast.identifier('error'), ast.stringExp(this.errorName)),
+                        ast.objectExpKV(ast.identifier('path'), ast.identifier('path')),
+                        ast.objectExpKV(ast.identifier('value'), this.paramName)
+                    ])
+                ]));
+    }
+}
+
+class MaxLengthConstraintTransformer implements ConstraintTransformer {
+    constraint : ast.MaxLengthConstraint;
+    errorName : string;
+    paramName : ast.Identifier;
+    operator : '>=' | '>';
+
+    constructor(constraint: ast.MaxLengthConstraint, paramName : ast.Identifier) {
+        this.constraint = constraint;
+        this.errorName = 'GreaterThanMaxLength';
+        this.paramName = paramName;
+        this.operator = constraint.inclusive ? '>=' : '>';
+    }
+
+    isaTest() {
+        return ast.binaryExp(this.operator, ast.memberExp(this.paramName, ast.identifier('length')), ast.integerExp(this.constraint.maxLength));
+    }
+
+    validateTest() {
+        return ast.ifExp(
+            ast.unaryExp('!', this.isaTest()),
+            ast.funcallExp(
+                ast.memberExp(ast.identifier('err'), ast.identifier('push')),
+                [
+                    ast.objectExp([
+                        ast.objectExpKV(ast.identifier('error'), ast.stringExp(this.errorName)),
+                        ast.objectExpKV(ast.identifier('path'), ast.identifier('path')),
+                        ast.objectExpKV(ast.identifier('value'), this.paramName)
+                    ])
+                ]));
+    }
+}
+
+class PatternConstraintTransformer implements ConstraintTransformer {
+    constraint : ast.PatternConstraint;
+    errorName : string;
+    paramName: ast.Identifier;
+
+    constructor(constraint: ast.PatternConstraint, paramName : ast.Identifier) {
+        this.constraint = constraint;
+        this.errorName = 'PatternMismatch';
+        this.paramName = paramName;
+    }
+
+    _regex() {
+        return ast.regexExp(this.constraint.pattern, this.constraint.flags);
+    }
+
+    isaTest() {
+        return ast.funcallExp(ast.memberExp(this._regex(), ast.identifier('test')), [
+                this.paramName
+            ]);
+    }
+
+    validateTest() {
+        return ast.ifExp(
+            ast.unaryExp('!', this.isaTest()),
+            ast.funcallExp(
+                ast.memberExp(ast.identifier('err'), ast.identifier('push')),
+                [
+                    ast.objectExp([
+                        ast.objectExpKV(ast.identifier('error'), ast.stringExp(this.errorName)),
+                        ast.objectExpKV(ast.identifier('path'), ast.identifier('path')),
+                        ast.objectExpKV(ast.identifier('value'), this.paramName)
+                    ])
+                ]));
+    }
+}
+
 export class ScalarTypeTransformer {
     className : ast.Identifier;
     _v : ast.Identifier;
     innerType : ast.ScalarTypeExp;
     arg : ast.Identifier;
     res : ast.Identifier;
+    constraints: ast.Constraint[];
 
-    constructor(className : ast.Identifier, _v: ast.Identifier, innerType : ast.ScalarTypeExp) {
+    constructor(className : ast.Identifier, _v: ast.Identifier, innerType : ast.ScalarTypeExp, constraints: ast.Constraint[]) {
         this.className = className;
         this._v = _v;
         this.innerType = innerType;
         this.arg = ast.identifier('v');
         this.res = ast.identifier('res');
+        this.constraints = constraints;
     }
 
     _inner_ref() {
@@ -35,6 +146,15 @@ export class ScalarTypeTransformer {
                 ast.parameterDecl(this.arg, this.innerType)
             ],
             ast.blockExp([
+                ast.letExp(this.res,
+                    ast.funcallExp(ast.memberExp(this.className, ast.identifier('validate')), [
+                        this.arg
+                    ])
+                ),
+                ast.ifExp(
+                    ast.funcallExp(ast.memberExp(this.res, ast.identifier('hasErrors')), []),
+                    ast.throwExp(this.res),
+                ),
                 ast.assignmentExp(this._inner_ref(), this.arg)
             ])
         );
@@ -92,16 +212,7 @@ export class ScalarTypeTransformer {
                 ast.parameterDecl(this.arg, ast.refTypeExp(ast.identifier('any')))
             ],
             ast.blockExp([
-                ast.letExp(this.res,
-                    ast.funcallExp(ast.memberExp(this.className, ast.identifier('validate')), [
-                        this.arg
-                    ])
-                ),
-                ast.ifExp(
-                    ast.funcallExp(ast.memberExp(this.res, ast.identifier('hasErrors')), []),
-                    ast.throwExp(this.res),
-                ),
-                ast.returnExp(ast.newExp(this.className, [ this.res ]))
+                ast.returnExp(ast.newExp(this.className, [ this.arg ]))
             ]),
             ast.refTypeExp(this.className)
         );
@@ -124,12 +235,29 @@ export class ScalarTypeTransformer {
                 ),
                 ast.returnExp(ast.unaryExp('!', ast.funcallExp(ast.memberExp(this.res, ast.identifier('hasErrors')), [])))
             ]),
-            ast.refTypeExp(this.className)
+            ast.scalarTypeExp('boolean')
         );
     }
 
     _isBaseJson() {
         return ast.binaryExp('==', ast.funcallExp(ast.identifier('typeof'), [this.arg]), ast.stringExp(this.innerType.name));
+    }
+
+    _makeConstraintTransformer(c : ast.Constraint) {
+        if (ast.isPatternConstraint(c)) {
+            return new PatternConstraintTransformer(c, this.arg);
+        } else if (ast.isMinLengthConstraint(c)) {
+            return new MinLengthConstraintTransformer(c, this.arg);
+        } else if (ast.isMaxLengthConstraint(c)) {
+            return new MaxLengthConstraintTransformer(c, this.arg)
+        } else {
+            throw new Error(`UnknownConstraint: ${c.type}`);
+        }
+    }
+
+    _validateConstraintTests() : ast.IfExp[] {
+        let transformers = this.constraints.map((c) => this._makeConstraintTransformer(c));
+        return transformers.map((transformer) => transformer.validateTest());
     }
 
     _validate() {
@@ -147,18 +275,23 @@ export class ScalarTypeTransformer {
             ],
             ast.blockExp([
                 ast.ifExp(
-                    this._isBaseJson(),
-                    ast.funcallExp(
-                        ast.memberExp(ast.identifier('err'), ast.identifier('push')),
-                        [
-                            ast.objectExp([
-                                ast.objectExpKV(ast.identifier('error'), ast.stringExp('Not a string.')),
-                                ast.objectExpKV(ast.identifier('path'), ast.identifier('path')),
-                                ast.objectExpKV(ast.identifier('value'), this.arg)
-                            ])
-                        ]
-                    )
+                    ast.unaryExp('!', this._isBaseJson()),
+                    ast.blockExp([
+                        ast.funcallExp(
+                            ast.memberExp(ast.identifier('err'), ast.identifier('push')),
+                            [
+                                ast.objectExp([
+                                    ast.objectExpKV(ast.identifier('error'), ast.stringExp('TypeMismatch')),
+                                    ast.objectExpKV(ast.identifier('expected'), ast.stringExp('string')),
+                                    ast.objectExpKV(ast.identifier('path'), ast.identifier('path')),
+                                    ast.objectExpKV(ast.identifier('value'), this.arg)
+                                ])
+                            ]
+                        ),
+                        ast.returnExp(ast.identifier('err'))
+                    ])
                 ),
+                ...(this._validateConstraintTests()),
                 ast.returnExp(ast.identifier('err'))
             ]),
             ast.refTypeExp(ast.identifier('ValidationResult'))
@@ -180,7 +313,14 @@ export class ScalarTypeTransformer {
 }
 
 export function transformStringType(type : ast.StringTypeExp) {
-    let transformer = new ScalarTypeTransformer(type.name, ast.identifier('_v'), ast.scalarTypeExp('string'))
+    let constraints = [];
+    if (type.pattern)
+        constraints.push(type.pattern);
+    if (type.minLength)
+        constraints.push(type.minLength);
+    if (type.maxLength)
+        constraints.push(type.maxLength);
+    let transformer = new ScalarTypeTransformer(type.name, ast.identifier('_v'), ast.scalarTypeExp('string'), constraints);
     return transformer.transform();
 }
 
@@ -202,6 +342,8 @@ export class Printer {
             return this._double(node);
         } else if (ast.isBooleanExp(node)) {
             return this._boolean(node);
+        } else if (ast.isRegexExp(node)) {
+            return this._regex(node);
         } else if (ast.isObjectExp(node)) {
             return this._object(node);
         } else if (ast.isIfExp(node)) {
@@ -345,6 +487,11 @@ export class Printer {
         return text(node.value.toString());
     }
 
+    private _regex(node : ast.RegexExp) : Doc {
+        let value = node.pattern.replace(/\'/g, "\\'");
+        return concat(flexWS(), text('/' + value + '/' + node.flags));
+    }
+
     private _objectKV(node : ast.ObjectExpKV, i : number = 0) : Doc {
         return concat(
             i > 0 ? text(',') : flexWS(), this._node(node.key), text(':'), this._node(node.value)
@@ -375,7 +522,7 @@ export class Printer {
 
     private _return(node : ast.ReturnExp) : Doc {
         return concat(
-            text('return'), flexWS(), this._node(node.exp), text(';')
+            text('return'), (ast.isExpression(node.exp) ? concat(flexWS(), this._node(node.exp)) : empty()), text(';')
         );
     }
 
