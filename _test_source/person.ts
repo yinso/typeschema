@@ -1,5 +1,7 @@
 
     import { ValidationResult } from '../lib/schema';
+    import { SSN } from './ssn';
+
     export class Person {
       
     readonly firstName : string;
@@ -9,7 +11,7 @@
     readonly ssn ?: SSN;
     
       // constructors expect the values are already of the proper-type.
-      constructor( v: {firstName : string, lastName : string, ssn ?: SSN}) {
+      constructor( v: {firstName ?: string, lastName ?: string, ssn ?: SSN}) {
         if (!(typeof(v) === 'object')) {
           throw new Error("InvalidParameter: must be object");
         }
@@ -49,7 +51,7 @@
       }
       
 
-      if (v.ssn && !ssn.isJSON(v.ssn)) { // v.ssn is optional
+      if (v.ssn && !SSN.isJSON(v.ssn)) { // v.ssn is optional
         return false;
       }
       
@@ -90,7 +92,7 @@
       
 
       v.ssn && 
-      ssn.validateJSON(v.ssn, path + '.ssn', err);
+      SSN.validate(v.ssn, path + '.ssn', err);
        // v.ssn is optional
       
         return err;

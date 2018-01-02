@@ -1,4 +1,4 @@
-import * as T from './ast';
+import * as T from './old-ast';
 
 export function parse(data : string) : T.TypeMap;
 

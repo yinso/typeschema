@@ -1,7 +1,7 @@
-import * as ast from '../lib/formatter';
+import * as ast from '../lib/ast';
 import * as pp from '../lib/printer';
 import { suite , test , hasErrors, noErrors , ok, throws , deepEqual , noThrows } from '../lib/test-util';
-import { identifier } from '../lib/formatter';
+import { identifier } from '../lib/ast';
 
 @suite
 class PrinterTest {

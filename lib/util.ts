@@ -1,3 +1,18 @@
+import * as Promise from 'bluebird';
+import * as glob from 'glob';
+
+export function globAsync(pattern : string) : Promise<string[]> {
+  return new Promise<string[]>((resolve, reject) => {
+    glob(pattern, (err, matches) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(matches);
+      }
+    })
+  })
+}
+
 export function extend(...items : {[key: string]: any}[]) : {[key: string]: any} {
   let result : {[key: string]: any} = {};
   for (var i = 0; i < items.length; ++i) {

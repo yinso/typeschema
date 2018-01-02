@@ -9,7 +9,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-var ast = require("../lib/formatter");
+var ast = require("../lib/ast");
 var pp = require("../lib/printer");
 var test_util_1 = require("../lib/test-util");
 var PrinterTest = /** @class */ (function () {

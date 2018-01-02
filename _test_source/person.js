@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var schema_1 = require("../lib/schema");
+var ssn_1 = require("./ssn");
 var Person = /** @class */ (function () {
     // constructors expect the values are already of the proper-type.
     function Person(v) {
@@ -33,7 +34,7 @@ var Person = /** @class */ (function () {
         if (!(typeof (v.lastName) === 'string')) {
             return false;
         }
-        if (v.ssn && !ssn.isJSON(v.ssn)) {
+        if (v.ssn && !ssn_1.SSN.isJSON(v.ssn)) {
             return false;
         }
         return true;
@@ -65,7 +66,7 @@ var Person = /** @class */ (function () {
             });
         } // v.lastName is required
         v.ssn &&
-            ssn.validateJSON(v.ssn, path + '.ssn', err);
+            ssn_1.SSN.validate(v.ssn, path + '.ssn', err);
         // v.ssn is optional
         return err;
     };

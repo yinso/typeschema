@@ -124,6 +124,7 @@ export class TypeConstraint implements IJsonSchema {
   validate(value : any, path : string, errors: ValidationError[]) : void {
     if (!this.isa(value)) {
       errors.push({
+        error: 'ValidationError',
         path: path,
         value: value,
         schema: this,
@@ -141,6 +142,7 @@ export class TypeConstraint implements IJsonSchema {
       return data;
     } else {
       throw new ValidationException([{
+        error: 'ValidationError',
         path: '$',
         value: data,
         schema: this,
@@ -219,6 +221,7 @@ export class EnumConstraint<T> implements IJsonSchema {
   validate(value : any, path : string, errors : ValidationError[]) : void {
     if (!this.isa(value)) {
       errors.push({
+        error: 'ValidationError',
         path : path,
         message: this.errorMessage(value),
         schema: this,

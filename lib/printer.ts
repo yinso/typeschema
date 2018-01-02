@@ -1,8 +1,8 @@
-import * as ast from './formatter';
+import * as ast from './ast';
 import { ETXTBSY } from 'constants';
 import { Ternary, isWhiteSpaceLike, isWhileStatement, textChangeRangeIsUnchanged } from 'typescript';
 import { MethodDeclaration } from 'typescript-parser';
-import { parameterDecl, paramTypeExp, IExpression } from './formatter';
+import { parameterDecl, paramTypeExp, IExpression } from './ast';
 import { open } from 'fs-extra-promise';
 import { Doc , layout , nest , text, empty, concat, flexWS, line } from './pretty-printer';
 
