@@ -1,7 +1,6 @@
 import * as ast from '../lib/ast';
-import * as pp from '../lib/printer';
+import * as pp from '../lib/typescript';
 import { suite , test , hasErrors, noErrors , ok, throws , deepEqual , noThrows } from '../lib/test-util';
-import { identifier } from '../lib/ast';
 
 @suite
 class PrinterTest {

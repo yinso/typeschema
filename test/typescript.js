@@ -10,7 +10,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 var ast = require("../lib/ast");
-var pp = require("../lib/printer");
+var pp = require("../lib/typescript");
 var test_util_1 = require("../lib/test-util");
 var PrinterTest = /** @class */ (function () {
     function PrinterTest() {
@@ -82,4 +82,4 @@ var PrinterTest = /** @class */ (function () {
     ], PrinterTest);
     return PrinterTest;
 }());
-//# sourceMappingURL=printer.js.map
+//# sourceMappingURL=typescript.js.map
