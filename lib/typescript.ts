@@ -128,6 +128,10 @@ export class ScalarTypeTransformer {
         );
     }
 
+    _isBaseJson() {
+        return ast.binaryExp('==', ast.funcallExp(ast.identifier('typeof'), [this.arg]), ast.stringExp(this.innerType.name));
+    }
+
     _validate() {
         return ast.methodDecl(
             ast.identifier('validate'),
@@ -143,7 +147,7 @@ export class ScalarTypeTransformer {
             ],
             ast.blockExp([
                 ast.ifExp(
-                    ast.binaryExp('==', ast.funcallExp(ast.identifier('typeof'), [this.arg]), ast.stringExp(this.innerType.name)),
+                    this._isBaseJson(),
                     ast.funcallExp(
                         ast.memberExp(ast.identifier('err'), ast.identifier('push')),
                         [
