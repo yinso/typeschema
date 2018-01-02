@@ -1,5 +1,192 @@
 import * as ast from './ast';
 import { Doc , layout , nest , text, empty, concat, flexWS, line } from './pretty-printer';
+import { validate } from './schema';
+
+export class ScalarTypeTransformer {
+    className : ast.Identifier;
+    _v : ast.Identifier;
+    innerType : ast.ScalarTypeExp;
+    arg : ast.Identifier;
+    res : ast.Identifier;
+
+    constructor(className : ast.Identifier, _v: ast.Identifier, innerType : ast.ScalarTypeExp) {
+        this.className = className;
+        this._v = _v;
+        this.innerType = innerType;
+        this.arg = ast.identifier('v');
+        this.res = ast.identifier('res');
+    }
+
+    _inner_ref() {
+        return ast.memberExp(ast.identifier('this'), this._v);
+    }
+
+    _inner() {
+        return ast.classPropertyDecl(this._v, 'private', 'instance', 'readonly', this.innerType);
+    }
+
+    _constructor() {
+        return ast.methodDecl(
+            ast.identifier('constructor'),
+            'public',
+            'instance',
+            'readonly',
+            [
+                ast.parameterDecl(this.arg, this.innerType)
+            ],
+            ast.blockExp([
+                ast.assignmentExp(this._inner_ref(), this.arg)
+            ])
+        );
+    }
+
+    _valueOf() {
+        return ast.methodDecl(
+            ast.identifier('valueOf'),
+            'public',
+            'instance',
+            'readonly',
+            [],
+            ast.blockExp([
+                ast.returnExp(this._inner_ref())
+            ]),
+            this.innerType
+        );
+    }
+
+    _toString() {
+        return ast.methodDecl(
+            ast.identifier('toString'),
+            'public',
+            'instance',
+            'readonly',
+            [],
+            ast.blockExp([
+                ast.returnExp(this._inner_ref())
+            ]),
+            ast.scalarTypeExp('string')
+        );
+    }
+
+    _toJSON() {
+        return ast.methodDecl(
+            ast.identifier('toJSON'),
+            'public',
+            'instance',
+            'readonly',
+            [],
+            ast.blockExp([
+                ast.returnExp(this._inner_ref())
+            ]),
+            ast.refTypeExp(ast.identifier('any'))
+        );
+    }
+
+    _fromJSON() {
+        return ast.methodDecl(
+            ast.identifier('fromJSON'),
+            'public',
+            'class',
+            'readonly',
+            [
+                ast.parameterDecl(this.arg, ast.refTypeExp(ast.identifier('any')))
+            ],
+            ast.blockExp([
+                ast.letExp(this.res,
+                    ast.funcallExp(ast.memberExp(this.className, ast.identifier('validate')), [
+                        this.arg
+                    ])
+                ),
+                ast.ifExp(
+                    ast.funcallExp(ast.memberExp(this.res, ast.identifier('hasErrors')), []),
+                    ast.throwExp(this.res),
+                ),
+                ast.returnExp(ast.newExp(this.className, [ this.res ]))
+            ]),
+            ast.refTypeExp(this.className)
+        );
+    }
+
+    _isJSON() {
+        return ast.methodDecl(
+            ast.identifier('isJSON'),
+            'public',
+            'class',
+            'readonly',
+            [
+                ast.parameterDecl(this.arg, ast.refTypeExp(ast.identifier('any')))
+            ],
+            ast.blockExp([
+                ast.letExp(this.res,
+                    ast.funcallExp(ast.memberExp(this.className, ast.identifier('validate')), [
+                        this.arg
+                    ])
+                ),
+                ast.returnExp(ast.unaryExp('!', ast.funcallExp(ast.memberExp(this.res, ast.identifier('hasErrors')), [])))
+            ]),
+            ast.refTypeExp(this.className)
+        );
+    }
+
+    _validate() {
+        return ast.methodDecl(
+            ast.identifier('validate'),
+            'public',
+            'class',
+            'readonly',
+            [
+                ast.parameterDecl(this.arg, ast.refTypeExp(ast.identifier('any'))),
+                ast.parameterDecl(ast.identifier('path'), ast.scalarTypeExp('string'), ast.stringExp('$')),
+                ast.parameterDecl(ast.identifier('err'),
+                    ast.refTypeExp(ast.identifier('ValidationResult')),
+                    ast.newExp(ast.identifier('ValidationResult'), [])),
+            ],
+            ast.blockExp([
+                ast.ifExp(
+                    ast.binaryExp('==', ast.funcallExp(ast.identifier('typeof'), [this.arg]), ast.stringExp(this.innerType.name)),
+                    ast.funcallExp(
+                        ast.memberExp(ast.identifier('err'), ast.identifier('push')),
+                        [
+                            ast.objectExp([
+                                ast.objectExpKV(ast.identifier('error'), ast.stringExp('Not a string.')),
+                                ast.objectExpKV(ast.identifier('path'), ast.identifier('path')),
+                                ast.objectExpKV(ast.identifier('value'), this.arg)
+                            ])
+                        ]
+                    )
+                ),
+                ast.returnExp(ast.identifier('err'))
+            ]),
+            ast.refTypeExp(ast.identifier('ValidationResult'))
+        );
+    }
+
+    transform() {
+        return ast.classDecl(this.className, [
+            this._inner(),
+            this._constructor(),
+            this._valueOf(),
+            this._toString(),
+            this._toJSON(),
+            this._fromJSON(),
+            this._isJSON(),
+            this._validate()
+        ]);
+    }
+}
+
+export class StringTypeTransformer {
+    private _inner : ast.StringTypeExp;
+
+    constructor(inner : ast.StringTypeExp) {
+        this._inner = inner;
+    }
+
+    transform() : ast.ClassDecl {
+        let transformer = new ScalarTypeTransformer(this._inner.name, ast.identifier('_v'), ast.scalarTypeExp('string'))
+        return transformer.transform();
+    }
+}
 
 export class Printer {
 
@@ -49,6 +236,8 @@ export class Printer {
             return this._let(node);
         } else if (ast.isReturnExp(node)) {
             return this._return(node);
+        } else if (ast.isStringTypeExp(node)) {
+            return this._stringType(node);
         } else if (ast.isScalarTypeExp(node)) {
             return this._scalarType(node);
         } else if (ast.isRefTypeExp(node)) {
@@ -124,6 +313,10 @@ export class Printer {
 
     private _typeDecl(node : ast.TypeExp) : Doc {
         return concat(flexWS(), text(':'), this._node(node));
+    }
+
+    private _stringType(node : ast.StringTypeExp) : Doc {
+        return concat(flexWS(), text('string'));
     }
 
     private _scalarType(node : ast.ScalarTypeExp) : Doc {

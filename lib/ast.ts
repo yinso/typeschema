@@ -1,3 +1,5 @@
+import { isRegExp, isNull, isNumber , isBoolean } from "util";
+
 export interface Node {
     type: string;
 }
@@ -566,16 +568,45 @@ export function isExportExp(arg : any) : arg is ExportExp {
 }
 
 // dealing with types!!!
-export type TypeExp = ScalarTypeExp | ArrayTypeExp | ObjectTypeExp | FunctionTypeExp | RefTypeExp;
+export type TypeExp = ScalarTypeExp | ArrayTypeExp | ObjectTypeExp | FunctionTypeExp | RefTypeExp | StringTypeExp;
 
 export function isTypeExp(arg : any) : arg is TypeExp {
-    return isScalarTypeExp(arg) || isArrayTypeExp(arg) || isObjectTypeExp(arg) || isFunctionTypeExp(arg) || isRefTypeExp(arg);
+    return isScalarTypeExp(arg)
+        || isArrayTypeExp(arg)
+        || isObjectTypeExp(arg)
+        || isFunctionTypeExp(arg)
+        || isRefTypeExp(arg)
+        || isStringTypeExp(arg);
 }
 
 export type BuiltinType = 'string' | 'integer' | 'double' | 'boolean' | 'null'; // these are types that won't get changed.
 
 export function isBuiltinType(arg : any) : arg is BuiltinType {
     return arg === 'string' || arg === 'integer' || arg === 'double' || arg === 'boolean' || arg === 'null';
+}
+
+export interface StringTypeExp extends Node {
+    type: 'StringTypeExp';
+    name: Identifier;
+    pattern ?: RegExp;
+    minLength ?: number;
+    minInclusive ?: boolean;
+    maxLength ?: number;
+    maxInclusive ?: boolean;
+}
+
+export function stringTypeExp(name: Identifier, args : { pattern ?: RegExp, minLength ?: number, minInclusive ?: boolean, maxLength ?: number, maxInclusive ?: boolean}) : StringTypeExp {
+    return { type: 'StringTypeExp', name: name, ...args };
+}
+
+export function isStringTypeExp(arg : any) : arg is StringTypeExp {
+    return !!arg && arg.type === 'StringTypeExp'
+        && isIdentifier(arg.name)
+        && (arg.pattern ? isRegExp(arg.pattern) : true)
+        && (arg.minLength ? isNumber(arg.minLength) : true)
+        && (arg.minInclusive ? isBoolean(arg.minInclusive) : true)
+        && (arg.maxLength ? isNumber(arg.maxLength) : true)
+        && (arg.maxInclusive ? isBoolean(arg.maxInclusive) : true);
 }
 
 export interface ScalarTypeExp extends Node {
@@ -614,10 +645,6 @@ export interface ObjectTypeExpKV extends Node {
 export function objectTypeExpKV(key: ObjectKeyExp, val: TypeExp, optional : boolean = false) : ObjectTypeExpKV {
     return { type:  'ObjectTypeExpKV', key: key, val: val, optional: optional };
 } 
-
-function isBoolean(val : any) : val is boolean {
-    return typeof(val) === 'boolean';
-}
 
 export function isObjectTypeExpKV(arg : any) : arg is ObjectTypeExpKV {
     return !!arg && arg.type === 'ObjectTypeExpKV' && isObjectKeyExp(arg.key) && isTypeExp(arg.val) && isBoolean(arg.optional);
