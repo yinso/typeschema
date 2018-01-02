@@ -1,12 +1,12 @@
 import * as ast from '../lib/ast';
-import * as pp from '../lib/typescript';
+import * as ts from '../lib/typescript';
 import { suite , test , hasErrors, noErrors , ok, throws , deepEqual , noThrows } from '../lib/test-util';
 
 @suite
 class PrinterTest {
     @test
     canPrint() {
-        let printer = new pp.TypeScriptPrinter();
+        let printer = new ts.Printer();
         console.info(printer.print(ast.ifExp(
             ast.binaryExp('==', ast.identifier('a'), ast.stringExp('hello kitty\'s')),
             ast.blockExp([

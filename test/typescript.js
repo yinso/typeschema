@@ -10,13 +10,13 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 var ast = require("../lib/ast");
-var pp = require("../lib/typescript");
+var ts = require("../lib/typescript");
 var test_util_1 = require("../lib/test-util");
 var PrinterTest = /** @class */ (function () {
     function PrinterTest() {
     }
     PrinterTest.prototype.canPrint = function () {
-        var printer = new pp.TypeScriptPrinter();
+        var printer = new ts.Printer();
         console.info(printer.print(ast.ifExp(ast.binaryExp('==', ast.identifier('a'), ast.stringExp('hello kitty\'s')), ast.blockExp([
             ast.funcallExp(ast.memberExp(ast.identifier('console'), ast.identifier('log')), [ast.identifier('a')])
         ]), ast.blockExp([

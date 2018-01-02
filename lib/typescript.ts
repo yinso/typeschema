@@ -1,12 +1,7 @@
 import * as ast from './ast';
-import { ETXTBSY } from 'constants';
-import { Ternary, isWhiteSpaceLike, isWhileStatement, textChangeRangeIsUnchanged } from 'typescript';
-import { MethodDeclaration } from 'typescript-parser';
-import { parameterDecl, paramTypeExp, IExpression } from './ast';
-import { open } from 'fs-extra-promise';
 import { Doc , layout , nest , text, empty, concat, flexWS, line } from './pretty-printer';
 
-export class TypeScriptPrinter {
+export class Printer {
 
     print(node : ast.Node) : string {
         let doc = this._node(node);
@@ -76,7 +71,7 @@ export class TypeScriptPrinter {
         return concat(line(), this._visibility(node.visibility), this._propScope(node.scope), this._mutability(node.mutability), this._identifier(node.name), typeDoc, text(';'));
     }
 
-    private _defaultValue(exp : IExpression) : Doc {
+    private _defaultValue(exp : ast.IExpression) : Doc {
         return concat(flexWS(), text('='), flexWS(), this._node(exp));
     }
 
