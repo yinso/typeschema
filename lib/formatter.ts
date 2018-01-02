@@ -1,4 +1,6 @@
 import { isBoolean } from "util";
+import { TypeElement } from "typescript";
+import { RefType } from "./ast";
 
 export interface Node {
     type: string;
@@ -181,6 +183,19 @@ export function isUnaryExp(arg : any) : arg is UnaryExp {
     return !!arg && arg.type === 'UnaryExp' && isUnaryOperator(arg.operator);
 }
 
+export interface ReturnExp extends Node {
+    readonly type: 'ReturnExp';
+    readonly exp: IExpression;
+}
+
+export function returnExp(exp : IExpression) : ReturnExp {
+    return { type: 'ReturnExp', exp: exp };
+}
+
+export function isReturnExp(arg : any) : arg is ReturnExp {
+    return !!arg && arg.type === 'ReturnExp' && isExpression(arg.exp);
+}
+
 export type BinaryOperators = '+' | '-' | '*' | '/' | '%' | '==' | '!=' | '>' | '>=' | '<' | '<=' | '.'; // member exp is here...
 
 export function isBinaryOperator(arg : any) : arg is BinaryOperators {
@@ -200,9 +215,7 @@ export function binaryExp(operator: BinaryOperators, lhs: IExpression, rhs: IExp
 }
 
 export function isBinaryExp(arg : any) : arg is BinaryExp {
-    let res = !!arg && arg.type === 'BinaryExp' && isBinaryOperator(arg.operator) && isExpression(arg.lhs) && isExpression(arg.rhs);
-    console.info('***************** isBinaryExp', res);
-    return res;
+    return !!arg && arg.type === 'BinaryExp' && isBinaryOperator(arg.operator) && isExpression(arg.lhs) && isExpression(arg.rhs);
 }
 
 export interface MemberExp extends Node {
@@ -231,29 +244,44 @@ export interface AssignmentExp extends Node {
     readonly exp: IExpression;
 }
 
-export function assignmentExp(name : AssignableExp, exp : IExpression) : AssignmentExp {
-    return { type: 'AssignmentExp', lhs: name, exp : exp };
+export function assignmentExp(lhs : AssignableExp, exp : IExpression) : AssignmentExp {
+    return { type: 'AssignmentExp', lhs: lhs, exp : exp };
 }
 
 export function isAssignmentExp(arg : any) : arg is AssignmentExp {
-    return !!arg && arg.type === 'AssignmentExp' && isAssignableExp(arg.name) && isExpression(arg.exp);
+    return !!arg && arg.type === 'AssignmentExp' && isAssignableExp(arg.lhs) && isExpression(arg.exp);
+}
+
+export interface LetExp extends Node {
+    readonly type: 'LetExp';
+    readonly lhs: Identifier;
+    readonly exp: IExpression;
+}
+
+export function letExp(lhs : Identifier, exp : IExpression) : LetExp {
+    return { type: 'LetExp', lhs: lhs, exp : exp };
+}
+
+export function isLetExp(arg : any) : arg is LetExp {
+    return !!arg && arg.type === 'LetExp' && isIdentifier(arg.lhs) && isExpression(arg.exp);
 }
 
 export interface IfExp extends Node {
     readonly type: 'IfExp';
     readonly cond: IExpression;
     readonly lhs: IExpression;
-    readonly rhs: IExpression;
+    readonly rhs ?: IExpression;
 }
 
-export function ifExp(cond: IExpression, lhs: IExpression, rhs: IExpression) : IfExp {
+export function ifExp(cond: IExpression, lhs: IExpression, rhs ?: IExpression) : IfExp {
     return { type: 'IfExp', cond: cond, lhs: lhs, rhs: rhs };
 }
 
 export function isIfExp(arg : any) : arg is IfExp {
-    let res = !!arg && arg.type === 'IfExp' && isExpression(arg.cond) && isExpression(arg.lhs) && isExpression(arg.rhs);
-    console.log('^^^^^^^^^^^^^^^^^^^isIfExp:', res);
-    return res;
+    return !!arg && arg.type === 'IfExp'
+        && isExpression(arg.cond)
+        && isExpression(arg.lhs)
+        && (arg.rhs ? isExpression(arg.rhs) : true);
 }
 
 export interface BlockExp extends Node {
@@ -327,9 +355,21 @@ export function funcallExp(func: IExpression, paramList: IExpression[]) : Funcal
 }
 
 export function isFuncallExp(arg : any) : arg is FuncallExp {
-    let res = !!arg && arg.type === 'FuncallExp' && isExpression(arg.function) && isArrayOf(arg.paramList, isExpression);
-    console.info('((((((((((((((( isFuncallExp', res);
-    return res;
+    return !!arg && arg.type === 'FuncallExp' && isExpression(arg.function) && isArrayOf(arg.paramList, isExpression);
+}
+
+export interface NewExp extends Node {
+    readonly type: 'NewExp';
+    readonly function: IExpression;
+    readonly paramList: IExpression[];
+}
+
+export function newExp(func: IExpression, paramList: IExpression[]) : NewExp {
+    return { type: 'NewExp', function: func, paramList: paramList };
+}
+
+export function isNewExp(arg : any) : arg is NewExp {
+    return !!arg && arg.type === 'NewExp' && isExpression(arg.function) && isArrayOf(arg.paramList, isExpression);
 }
 
 export type IExpression =
@@ -338,14 +378,17 @@ export type IExpression =
     | ObjectExp
     | ArrayExp
     | UnaryExp
+    | ReturnExp
     | BinaryExp
     | MemberExp
     | AssignmentExp
+    | LetExp
     | IfExp
     | BlockExp
     | ThrowExp
     | TryCatchFinallyExp
-    | FuncallExp;
+    | FuncallExp
+    | NewExp;
 
 export function isExpression(arg : any) : arg is IExpression {
     return isIdentifier(arg)
@@ -353,31 +396,34 @@ export function isExpression(arg : any) : arg is IExpression {
         || isArrayExp(arg)
         || isObjectExp(arg)
         || isUnaryExp(arg)
+        || isReturnExp(arg)
         || isBinaryExp(arg)
         || isMemberExp(arg)
         || isAssignmentExp(arg)
+        || isLetExp(arg)
         || isIfExp(arg)
         || isBlockExp(arg)
         || isThrowExp(arg)
         || isTryCatchFinallyExp(arg)
-        || isFuncallExp(arg);
+        || isFuncallExp(arg)
+        || isNewExp(arg);
 }
 
 export interface ParameterDecl extends Node {
     type: 'ParameterDecl';
     name: Identifier;
-    paramType ?: ParamTypeExp;
+    paramType ?: TypeExp;
     defaultValue ?: IExpression;
 }
 
-export function parameterDecl(name : Identifier, paramType ?: ParamTypeExp, defaultValue ?: IExpression) : ParameterDecl {
+export function parameterDecl(name : Identifier, paramType ?: TypeExp, defaultValue ?: IExpression) : ParameterDecl {
     return { type: 'ParameterDecl', name: name , paramType : paramType, defaultValue : defaultValue };
 }
 
 export function isParameterDecl(arg : any) : arg is ParameterDecl {
     return !!arg && arg.type === 'ParameterDecl' 
         && isIdentifier(arg.name) 
-        && (arg.paramType ? isParamTypeExp(arg.paramType) : true)
+        && (arg.paramType ? isTypeExp(arg.paramType) : true)
         && (arg.defaultValue ? isExpression(arg.defaultValue) : true);
 }
 
@@ -414,51 +460,29 @@ export function isPropertyScope(arg : any) : arg is PropertyScope {
     return arg === 'class' || arg === 'instance';
 }
 
-export interface MethodDecl extends Node {
-    type: 'MethodDecl';
-    visibility: Visibility;
-    scope: PropertyScope;
-    name: Identifier;
-    paramList: ParameterDecl[];
-    returnType ?: TypeExp;
-    body: IExpression;
-}
+export type Mutability = 'readonly' | 'const' | 'mutable';
 
-export function methodDecl(name: Identifier, visibility: Visibility, scope: PropertyScope, paramList: ParameterDecl[], body: IExpression) : MethodDecl {
-    return {
-        type: 'MethodDecl',
-        visibility: visibility,
-        scope: scope,
-        name: name,
-        paramList: paramList,
-        body: body
-    };
-}
-
-export function isMethodDecl(arg : any) : arg is MethodDecl {
-    return !!arg && arg.type === 'MethodDecl'
-        && isVisibility(arg.visibility)
-        && isPropertyScope(arg.scope)
-        && isIdentifier(arg.name)
-        && isArrayOf(arg.paramList, isParameterDecl)
-        && isExpression(arg.body);
+export function isMutability(arg : any) : arg is Mutability {
+    return arg === 'readonly' || arg === 'const' || arg === 'mutable';
 }
 
 export interface ClassPropertyDecl extends Node {
     type: 'ClassPropertyDecl';
     visibility: Visibility;
     scope: PropertyScope;
+    mutability: Mutability;
     name: Identifier;
-    value: FunctionDecl | TypeExp;
+    propType ?: TypeExp;
 }
 
-export function classPropertyDecl(name: Identifier, visibility: Visibility, scope: PropertyScope, value : FunctionDecl | IType) : ClassPropertyDecl {
+export function classPropertyDecl(name: Identifier, visibility: Visibility, scope: PropertyScope, mutability: Mutability, propType ?: TypeExp) : ClassPropertyDecl {
     return {
         type: 'ClassPropertyDecl',
         visibility: visibility,
         scope: scope,
+        mutability: mutability,
         name: name,
-        value: value
+        propType: propType
     };
 }
 
@@ -467,8 +491,35 @@ export function isClassPropertyDecl(arg : any) : arg is ClassPropertyDecl {
         && arg.type === 'ClassPropertyDecl'
         && isVisibility(arg.visibility)
         && isPropertyScope(arg.scope)
+        && isMutability(arg.mutability)
         && isIdentifier(arg.name)
-        && isFunctionDecl(arg.value)
+        && (arg.propType ? isTypeExp(arg.propType) : true);
+}
+
+export interface MethodDecl extends ClassPropertyDecl {
+    paramList: ParameterDecl[];
+    returnType ?: TypeExp;
+    body: IExpression;
+}
+
+export function methodDecl(name: Identifier, visibility : Visibility, scope: PropertyScope, mutability: Mutability, paramList: ParameterDecl[], body: IExpression, returnType ?: TypeExp) : MethodDecl {
+    return {
+        type: 'ClassPropertyDecl',
+        visibility: visibility,
+        scope: scope,
+        mutability: mutability,
+        name: name,
+        paramList: paramList,
+        returnType: returnType,
+        body: body
+    };
+}
+
+export function isMethodDecl(arg : any) : arg is MethodDecl {
+    return isClassPropertyDecl(arg)
+        && isArrayOf((<any>arg).paramList, isParameterDecl)
+        && ((<any>arg).returnType ? isTypeExp((<any>arg).returnType) : true)
+        && isExpression((<any>arg).body);
 }
 
 export interface ClassDecl extends Node {
@@ -519,10 +570,10 @@ export function isExportExp(arg : any) : arg is ExportExp {
 }
 
 // dealing with types!!!
-export type TypeExp = BuiltinType | ArrayTypeExp | ObjectTypeExp | FunctionTypeExp;
+export type TypeExp = ScalarTypeExp | ArrayTypeExp | ObjectTypeExp | FunctionTypeExp | RefTypeExp;
 
 export function isTypeExp(arg : any) : arg is TypeExp {
-    return isScalarTypeExp(arg) || isArrayTypeExp(arg) || isObjectTypeExp(arg) || isFunctionTypeExp(arg);
+    return isScalarTypeExp(arg) || isArrayTypeExp(arg) || isObjectTypeExp(arg) || isFunctionTypeExp(arg) || isRefTypeExp(arg);
 }
 
 export type BuiltinType = 'string' | 'integer' | 'double' | 'boolean' | 'null'; // these are types that won't get changed.
@@ -613,28 +664,15 @@ export function isFunctionTypeExp(arg : any) : arg is FunctionTypeExp {
     return !!arg && arg.type === 'FunctionTypeExp' && isArrayOf(arg.parameters, isParamTypeExp) && isTypeExp(arg.returnType);
 }
 
-classDecl(identifier('SSN'), [ // class SSN { ... }
-    classPropertyDecl( // private _v: string;
-        identifier('_v'),
-        'private',
-        'instance',
-        {
-            $type: identifier('string')
-        }
-    ),
-    classPropertyDecl(
-        identifier('constructor'),
-        'public',
-        'class',
-        functionDecl(
-            identifier('constructor'),
-            [
-                parameterDecl(identifier('v'))
-            ],
-            blockExp([
-                assignmentExp(memberExp(identifier('this'), identifier('_v')), identifier('v'))
-            ])
-        )
-    )
-])
+export interface RefTypeExp {
+    type: 'RefTypeExp';
+    name: Identifier;
+}
 
+export function refTypeExp(name: Identifier) : RefTypeExp {
+    return { type: 'RefTypeExp', name: name };
+}
+
+export function isRefTypeExp(arg : any) : arg is RefTypeExp {
+    return !!arg && arg.type === 'RefTypeExp' && isIdentifier(arg.name);
+}

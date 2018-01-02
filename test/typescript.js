@@ -28,7 +28,7 @@ var TypeScriptTest = /** @class */ (function () {
             .then(function (res) {
             return fs.writeFileAsync(path.join(__dirname, '..', '_test_source', 'ssn.ts'), res, 'utf8')
                 .then(function () {
-                console.info(res);
+                //console.info(res);
             });
         });
     };
@@ -58,7 +58,7 @@ var TypeScriptTest = /** @class */ (function () {
             .then(function (res) {
             return fs.writeFileAsync(path.join(__dirname, '..', '_test_source', 'person.ts'), res, 'utf8')
                 .then(function () {
-                console.info(res);
+                //console.info(res);
             });
         });
     };

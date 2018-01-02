@@ -19,7 +19,7 @@ class TypeScriptTest {
       .then((res) => {
         return fs.writeFileAsync(path.join(__dirname, '..', '_test_source', 'ssn.ts'), res, 'utf8')
           .then(() => {
-            console.info(res);
+            //console.info(res);
           })
       })
   }
@@ -67,7 +67,7 @@ class TypeScriptTest {
       .then((res) => {
         return fs.writeFileAsync(path.join(__dirname, '..', '_test_source', 'person.ts'), res, 'utf8')
           .then(() => {
-            console.info(res);
+            //console.info(res);
           })
       })
   }
