@@ -595,7 +595,7 @@ export interface StringTypeExp extends Node {
     maxInclusive ?: boolean;
 }
 
-export function stringTypeExp(name: Identifier, args : { pattern ?: RegExp, minLength ?: number, minInclusive ?: boolean, maxLength ?: number, maxInclusive ?: boolean}) : StringTypeExp {
+export function stringTypeExp(name: Identifier, args : { pattern ?: RegExp, minLength ?: number, minInclusive ?: boolean, maxLength ?: number, maxInclusive ?: boolean} = {}) : StringTypeExp {
     return { type: 'StringTypeExp', name: name, ...args };
 }
 

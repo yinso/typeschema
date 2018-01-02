@@ -22,7 +22,7 @@ var PrinterTest = /** @class */ (function () {
         ]), ast.blockExp([
             ast.funcallExp(ast.memberExp(ast.identifier('console'), ast.identifier('log')), [ast.identifier('a')])
         ]))));
-        var transformer = new ts.StringTypeTransformer(ast.stringTypeExp(ast.identifier('SSN'), {}));
+        var transformer = new ts.StringTypeTransformer(ast.stringTypeExp(ast.identifier('SSN')));
         console.info(printer.print(transformer.transform()));
     };
     __decorate([
