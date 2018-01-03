@@ -320,7 +320,7 @@ export function transformStringType(type : ast.StringTypeExp) {
         constraints.push(type.minLength);
     if (type.maxLength)
         constraints.push(type.maxLength);
-    let transformer = new ScalarTypeTransformer(type.name, ast.identifier('_v'), ast.scalarTypeExp('string'), constraints);
+    let transformer = new ScalarTypeTransformer(type.name || ast.identifier(''), ast.identifier('_v'), ast.scalarTypeExp('string'), constraints);
     return transformer.transform();
 }
 

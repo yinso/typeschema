@@ -1,4 +1,5 @@
 import { isRegExp, isNull, isNumber , isBoolean, isString } from "util";
+import { Map } from "es6-shim";
 
 export interface Node {
     type: string;
@@ -587,19 +588,19 @@ export function isBuiltinType(arg : any) : arg is BuiltinType {
 
 export interface StringTypeExp extends Node {
     type: 'StringTypeExp';
-    name: Identifier;
+    name ?: Identifier;
     pattern ?: PatternConstraint;
     minLength ?: MinLengthConstraint;
     maxLength ?: MaxLengthConstraint;
 }
 
-export function stringTypeExp(name: Identifier, args : { pattern ?: PatternConstraint, minLength ?: MinLengthConstraint, maxLength ?: MaxLengthConstraint } = {}) : StringTypeExp {
-    return { type: 'StringTypeExp', name: name, ...args };
+export function stringTypeExp(args : {name ?: Identifier, pattern ?: PatternConstraint, minLength ?: MinLengthConstraint, maxLength ?: MaxLengthConstraint } = {}) : StringTypeExp {
+    return { type: 'StringTypeExp', ...args };
 }
 
 export function isStringTypeExp(arg : any) : arg is StringTypeExp {
     return !!arg && arg.type === 'StringTypeExp'
-        && isIdentifier(arg.name)
+        && (arg.name ? isIdentifier(arg.name) : true)
         && (arg.pattern ? isPatternConstraint(arg.pattern) : true)
         && (arg.minLength ? isMinLengthConstraint(arg.minInclusive) : true)
         && (arg.maxLength ? isMaxLengthConstraint(arg.maxLength) : true);
@@ -751,4 +752,73 @@ export function isConstraint(arg : any) : arg is Constraint {
     return isPatternConstraint(arg)
         || isMinLengthConstraint(arg)
         || isMaxLengthConstraint(arg);
+}
+
+// **** need to have environments. // there are actually 2 environments needed, one for type, and one for expressions.
+
+// should we make use of identifier as the type?
+export class Environment<T> {
+    _inner : { [key: string]: T; }; // using Object for simplified equality comparison.
+    _prev ?: Environment<T>;
+    constructor(prev ?: Environment<T>) {
+        this._inner = {};
+        this._prev = prev;
+    }
+
+    has(key: Identifier) : boolean {
+        if (this._inner.hasOwnProperty(key.name)) {
+            return true;
+        } else if (this._prev) {
+            return this._prev.has(key);
+        } else {
+            return false;
+        }
+    }
+
+    get(key: Identifier) : T {
+        if (this._inner.hasOwnProperty(key.name)) {
+            return this._inner[key.name];
+        } else if (this._prev) {
+            return this._prev.get(key);
+        } else {
+            throw new Error(`UnknownIdentifer: ${key.name}`);
+        }
+    }
+
+    del(key: Identifier) : void {
+        delete this._inner[key.name];
+    }
+
+    set(key: Identifier, val: T) : T {
+        this._inner[key.name] = val;
+        return val;
+    }
+
+    define(key: Identifier, val: T) : T {
+        if (this._inner.hasOwnProperty(key.name)) {
+            throw new Error(`DuplicateIdentifier: ${key.name}`);
+        }
+        this._inner[key.name] = val;
+        return val;
+    }
+
+    pushEnv() : Environment<T> {
+        return new Environment<T>(this);
+    }
+}
+
+
+// DefineTypeExp
+export interface DefineTypeExp extends Node {
+    type: 'DefineTypeExp';
+    name: Identifier;
+    typeValue: TypeExp;
+}
+
+export function defineTypeExp(name: Identifier, typeValue: TypeExp ) : DefineTypeExp {
+    return { type: 'DefineTypeExp', name: name, typeValue : typeValue };
+}
+
+export function isDefineTypeExp(arg : any) : arg is DefineTypeExp {
+    return !!arg && arg.type === 'DefineTypeExp' && isIdentifier(arg.name) && isTypeExp(arg.typeValue);
 }

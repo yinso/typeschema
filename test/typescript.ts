@@ -17,7 +17,8 @@ class PrinterTest {
                 ast.funcallExp(ast.memberExp(ast.identifier('console'), ast.identifier('log')), [ ast.identifier('a') ])
             ]),
         )));
-        console.info(printer.print(ts.transformStringType(ast.stringTypeExp(ast.identifier('SSN'), {
+        console.info(printer.print(ts.transformStringType(ast.stringTypeExp({
+            name: ast.identifier('SSN'),
             pattern: ast.patternConstraint('^\\d-\\d-\\d-?\\d-\\d-?\\d-\\d-\\d-\\d$'),
             minLength: ast.minLengthConstraint(9, true),
             maxLength: ast.maxLengthConstraint(11, true)
